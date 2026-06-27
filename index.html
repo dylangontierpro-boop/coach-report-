@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coach Health Tracker</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; }
+    :root {
+      --bg: #ffffff; --bg2: #f5f5f5; --border: #e0e0e0;
+      --text: #1a1a1a; --text2: #666666;
+      --blue: #3266ad; --green: #1D9E75; --red: #E24B4A;
+      --radius: 8px;
+    }
+    .app { max-width: 720px; margin: 0 auto; padding: 1rem; }
+    .card { background: var(--bg); border-radius: 12px; border: 1px solid var(--border); padding: 16px 18px; margin-bottom: 12px; }
+    .inp { width: 100%; padding: 8px 10px; border-radius: var(--radius); border: 1px solid #ccc; background: var(--bg); color: var(--text); font-size: 14px; font-family: inherit; }
+    .btn { padding: 11px; border-radius: var(--radius); border: none; color: #fff; cursor: pointer; font-size: 14px; font-weight: 500; width: 100%; margin-bottom: 8px; }
+    .btn-blue  { background: var(--blue); }
+    .btn-green { background: var(--green); }
+    .tab-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+    .tab { padding: 8px 14px; border-radius: var(--radius); cursor: pointer; font-size: 13px; border: 1px solid var(--border); background: transparent; color: var(--text2); }
+    .tab.active { border-color: var(--blue); background: #e8f0fb; color: var(--text); font-weight: 500; }
+    .lbl { font-size: 12px; color: var(--text2); margin-bottom: 4px; display: block; }
+    .sec { font-weight: 500; font-size: 14px; margin-bottom: 12px; }
+    .row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .col { flex: 1; }
+    .choice-btn { padding: 7px 10px; border-radius: var(--radius); cursor: pointer; font-size: 12px; border: 1px solid var(--border); background: var(--bg); }
+    .choice-btn.active { border: 2px solid var(--blue); background: #e8f0fb; font-weight: 500; }
+    table { border-collapse: collapse; width: 100%; }
+    th { padding: 8px 10px; font-size: 11px; font-weight: 600; color: var(--text2); border-bottom: 2px solid var(--border); background: var(--bg2); white-space: nowrap; text-align: center; }
+    td { padding: 8px 10px; font-size: 12px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .overflow { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+    .avg-cell { background: #ddeaff; font-weight: 600; color: var(--blue); }
+    .nav-btn { padding: 6px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: transparent; cursor: pointer; color: var(--text2); font-size: 14px; }
+    .week-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .week-label { flex: 1; text-align: center; font-size: 13px; font-weight: 500; }
+    .sync-btn { background: #0f9d58; }
+    .sync-ok   { background: var(--green); }
+    .sync-err  { background: var(--red); }
+    textarea { resize: vertical; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQzKuNUy_jMLMJn9op9NNdkjqs50dmLfGIf_Unz5DJPYnUkK8Gb8U0DON2X16EHOqH/exec";
+const HEALTH_KEY  = "cht_health_v1";
+const SEANCES_KEY = "cht_seances_v1";
+
+const moodLabels = ["","😞 Très bas","😕 Bas","😐 Neutre","🙂 Bien","😄 Excellent"];
+const digLabels  = ["","🔴 Mauvaise","🟠 Difficile","🟡 Normale","🟢 Bonne","✅ Excellente"];
+const DAYS_FR    = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+function getWeekBounds(offset=0) {
+  const now = new Date();
+  const day = now.getDay()||7;
+  const mon = new Date(now); mon.setDate(now.getDate()-day+1+offset*7); mon.setHours(0,0,0,0);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+  const fmt = d => d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"});
+  return { mon, sun, label:`Semaine du ${fmt(mon)} au ${fmt(sun)} ${sun.getFullYear()}` };
+}
+
+function fmtDate(str) {
+  const d = new Date(str+"T12:00:00");
+  return `${DAYS_FR[d.getDay()]} ${d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"})}`;
+}
+
+function avgArr(arr, key) {
+  const v = arr.map(e=>parseFloat(e[key])).filter(v=>!isNaN(v)&&v>0);
+  return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null;
+}
+
+function calcTonnage(exo) {
+  return (exo.sets||[]).reduce((t,s)=>t+(parseFloat(s.reps)||0)*(parseFloat(s.weight)||0),0);
+}
+
+function pctDiff(cur,ref) {
+  if (cur==null||ref==null||ref===0) return null;
+  return (cur-ref)/ref*100;
+}
+
+const emptyEntry = date => ({
+  date, bpmRest:"",bpmLow:"",bpmHigh:"",
+  sleepHours:"",sleepScore:"",sleepAwake:"",sleepRem:"",sleepLight:"",sleepDeep:"",
+  steps:"",weight:"",waist:"",systolic:"",diastolic:"",
+  mood:0,moodNote:"",digestion:0,water5L:false,sessions:[]
+});
+
+function loadLocal(key) {
+  try { return JSON.parse(localStorage.getItem(key)||"null"); } catch { return null; }
+}
+function saveLocal(key,val) { localStorage.setItem(key,JSON.stringify(val)); }
+
+async function sendToSheet(type, data) {
+  const res = await fetch(SCRIPT_URL, {
+    method:"POST",
+    mode:"no-cors",
+    body: JSON.stringify({type,data}),
+    headers:{"Content-Type":"application/json"}
+  });
+}
+
+// ── STATS ──────────────────────────────────────────────────────────────────
+function StatsTab({allData,weekOffset,setWeekOffset}) {
+  function getEntries(offset=0) {
+    if(!allData) return [];
+    const {mon,sun}=getWeekBounds(offset);
+    return Object.values(allData).filter(e=>{const d=new Date(e.date+"T12:00:00");return d>=mon&&d<=sun;}).sort((a,b)=>a.date>b.date?1:-1);
+  }
+  function getRefOffset() {
+    if(!allData||!Object.keys(allData).length) return 0;
+    const dates=Object.keys(allData).sort();
+    return -Math.floor((new Date()-new Date(dates[0]+"T12:00:00"))/(1000*60*60*24*7));
+  }
+  const entries=getEntries(weekOffset),refOffset=getRefOffset(),refEntries=getEntries(refOffset);
+  const {label}=getWeekBounds(weekOffset);
+  const dayCol=e=>new Date(e.date+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit"});
+
+  function pctBadge(cur,ref,inv) {
+    if(cur==null||ref==null||ref===0||weekOffset===refOffset) return null;
+    const p=pctDiff(cur,ref),good=inv?p<=0:p>=0;
+    return <div style={{fontSize:10,color:good?"var(--green)":"var(--red)",marginTop:2}}>{p>=0?"+":""}{p.toFixed(1)}%</div>;
+  }
+
+  const rows=[
+    {label:"⚖️ Poids (kg)",      cell:e=>e.weight||"—",  avg:()=>{const v=avgArr(entries,"weight");   return v!=null?v.toFixed(1):"—";},  pct:()=>pctBadge(avgArr(entries,"weight"),avgArr(refEntries,"weight"),false)},
+    {label:"📏 Tour taille (cm)",cell:e=>e.waist||"—",   avg:()=>{const v=avgArr(entries,"waist");    return v!=null?v.toFixed(1):"—";},  pct:()=>pctBadge(avgArr(entries,"waist"),avgArr(refEntries,"waist"),true)},
+    {label:"❤️ BPM repos",       cell:e=>e.bpmRest||"—", avg:()=>{const v=avgArr(entries,"bpmRest");  return v!=null?Math.round(v):"—";}, pct:()=>pctBadge(avgArr(entries,"bpmRest"),avgArr(refEntries,"bpmRest"),true)},
+    {label:"❤️ BPM min",         cell:e=>e.bpmLow||"—",  avg:()=>{const v=avgArr(entries,"bpmLow");   return v!=null?Math.round(v):"—";}, pct:()=>null},
+    {label:"❤️ BPM max",         cell:e=>e.bpmHigh||"—", avg:()=>{const v=avgArr(entries,"bpmHigh");  return v!=null?Math.round(v):"—";}, pct:()=>null},
+    {label:"🩺 Tension (mmHg)",  cell:e=>e.systolic?(e.systolic+"/"+(e.diastolic||"—")):"—", avg:()=>{const s=avgArr(entries,"systolic"),d=avgArr(entries,"diastolic");return s!=null?(Math.round(s)+"/"+(d!=null?Math.round(d):"—")):"—";}, pct:()=>pctBadge(avgArr(entries,"systolic"),avgArr(refEntries,"systolic"),true)},
+    {label:"👣 Pas",             cell:e=>e.steps?parseInt(e.steps).toLocaleString("fr-FR"):"—", avg:()=>{const v=avgArr(entries,"steps");return v!=null?Math.round(v).toLocaleString("fr-FR"):"—";}, pct:()=>pctBadge(avgArr(entries,"steps"),avgArr(refEntries,"steps"),false)},
+    {label:"😴 Sommeil (h)",     cell:e=>e.sleepHours||"—", avg:()=>{const v=avgArr(entries,"sleepHours");return v!=null?v.toFixed(1):"—";}, pct:()=>pctBadge(avgArr(entries,"sleepHours"),avgArr(refEntries,"sleepHours"),false)},
+    {label:"😴 Score /100",      cell:e=>e.sleepScore||"—", avg:()=>{const v=avgArr(entries,"sleepScore");return v!=null?Math.round(v):"—";}, pct:()=>pctBadge(avgArr(entries,"sleepScore"),avgArr(refEntries,"sleepScore"),false)},
+    {label:"😴 Profond (min)",   cell:e=>e.sleepDeep||"—",  avg:()=>{const v=avgArr(entries,"sleepDeep"); return v!=null?Math.round(v):"—";}, pct:()=>null},
+    {label:"😴 Paradoxal (min)", cell:e=>e.sleepRem||"—",   avg:()=>{const v=avgArr(entries,"sleepRem");  return v!=null?Math.round(v):"—";}, pct:()=>null},
+    {label:"😴 Léger (min)",     cell:e=>e.sleepLight||"—", avg:()=>{const v=avgArr(entries,"sleepLight");return v!=null?Math.round(v):"—";}, pct:()=>null},
+    {label:"😴 Éveil (min)",     cell:e=>e.sleepAwake||"—", avg:()=>{const v=avgArr(entries,"sleepAwake");return v!=null?Math.round(v):"—";}, pct:()=>pctBadge(avgArr(entries,"sleepAwake"),avgArr(refEntries,"sleepAwake"),true)},
+    {label:"🧠 Humeur (/5)",     cell:e=>e.mood?(e.mood+"/5"):"—", avg:()=>{const v=avgArr(entries,"mood");return v!=null?v.toFixed(1)+"/5":"—";}, pct:()=>pctBadge(avgArr(entries,"mood"),avgArr(refEntries,"mood"),false)},
+    {label:"🫃 Digestion (/5)",  cell:e=>e.digestion?(e.digestion+"/5"):"—", avg:()=>{const v=avgArr(entries,"digestion");return v!=null?v.toFixed(1)+"/5":"—";}, pct:()=>null},
+    {label:"💧 5L eau",          cell:e=>e.water5L?"✅":"—", avg:()=>entries.filter(e=>e.water5L).length+"/"+entries.length+" j", pct:()=>null},
+  ];
+
+  return (
+    <div>
+      <div className="week-nav">
+        <button className="nav-btn" onClick={()=>setWeekOffset(w=>w-1)}>←</button>
+        <span className="week-label">{label}</span>
+        <button className="nav-btn" onClick={()=>setWeekOffset(w=>Math.min(w+1,0))}>→</button>
+      </div>
+      {entries.length===0 ? (
+        <div className="card" style={{textAlign:"center",padding:"2rem"}}>
+          <p style={{color:"var(--text2)"}}>Aucune donnée pour cette semaine.</p>
+        </div>
+      ) : (
+        <div className="overflow">
+          <table>
+            <thead>
+              <tr>
+                <th style={{textAlign:"left",minWidth:160,background:"var(--bg2)"}}>Métrique</th>
+                {entries.map((e,i)=><th key={i}>{dayCol(e)}</th>)}
+                <th className="avg-cell">📊 Moy.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row,ri)=>(
+                <tr key={ri} style={{background:ri%2===0?"transparent":"var(--bg2)"}}>
+                  <td style={{textAlign:"left",fontWeight:500,fontSize:12,color:"var(--text2)",background:ri%2===0?"var(--bg2)":"var(--bg)"}}>{row.label}</td>
+                  {entries.map((e,i)=><td key={i}>{row.cell(e)}</td>)}
+                  <td className="avg-cell">{row.avg()}{row.pct()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SÉANCES ────────────────────────────────────────────────────────────────
+function SeancesTab() {
+  const [seances,setSeances]=useState([]);
+  const [selectedId,setSelectedId]=useState(null);
+  const [view,setView]=useState("log");
+  const [newName,setNewName]=useState("");
+  const [newExo,setNewExo]=useState("");
+  const [perf,setPerf]=useState({});
+  const [saved,setSaved]=useState(false);
+
+  useEffect(()=>{
+    const d=loadLocal(SEANCES_KEY)||[];
+    setSeances(d);
+    if(d.length){setSelectedId(d[0].id);initPerf(d[0]);}
+  },[]);
+
+  function initPerf(s){const p={};(s.exos||[]).forEach(e=>{p[e.id]=[{reps:"",weight:""}];});setPerf(p);}
+
+  function persist(u){setSeances(u);saveLocal(SEANCES_KEY,u);setSaved(true);setTimeout(()=>setSaved(false),2000);}
+
+  function addSeance(){
+    if(!newName.trim())return;
+    const s={id:Date.now(),name:newName.trim(),exos:[],history:[]};
+    const u=[...seances,s];persist(u);setSelectedId(s.id);setPerf({});setNewName("");
+  }
+  function rmSeance(id){
+    const u=seances.filter(s=>s.id!==id);persist(u);
+    if(u.length){setSelectedId(u[0].id);initPerf(u[0]);}else setSelectedId(null);
+  }
+  function addExo(){
+    if(!newExo.trim())return;
+    const id=Date.now();
+    const u=seances.map(s=>s.id===selectedId?{...s,exos:[...s.exos,{id,name:newExo.trim()}]}:s);
+    persist(u);setPerf(p=>({...p,[id]:[{reps:"",weight:""}]}));setNewExo("");
+  }
+  function rmExo(exoId){const u=seances.map(s=>s.id===selectedId?{...s,exos:s.exos.filter(e=>e.id!==exoId)}:s);persist(u);}
+  function updSet(exoId,i,k,v){setPerf(p=>{const sets=[...(p[exoId]||[])];sets[i]={...sets[i],[k]:v};return{...p,[exoId]:sets};});}
+  function addSet(exoId){setPerf(p=>({...p,[exoId]:[...(p[exoId]||[]),{reps:"",weight:""}]}));}
+  function rmSet(exoId,i){setPerf(p=>({...p,[exoId]:(p[exoId]||[]).filter((_,j)=>j!==i)}));}
+  function logSession(){
+    const cur=seances.find(s=>s.id===selectedId);if(!cur)return;
+    const perfData=cur.exos.map(e=>({exoId:e.id,name:e.name,sets:(perf[e.id]||[]).filter(s=>s.reps&&s.weight)})).filter(e=>e.sets.length>0);
+    if(!perfData.length)return;
+    const u=seances.map(s=>s.id===selectedId?{...s,history:[...(s.history||[]),{date:todayStr(),perf:perfData}]}:s);
+    persist(u);initPerf(cur);
+  }
+
+  const current=seances.find(s=>s.id===selectedId);
+
+  return (
+    <div>
+      <div className="card">
+        <p className="sec">💪 Mes séances</p>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+          {seances.map((s,i)=>(
+            <div key={s.id} style={{display:"flex",alignItems:"center",gap:2}}>
+              <button onClick={()=>{setSelectedId(s.id);initPerf(s);setView("log");}} className={`tab${selectedId===s.id?" active":""}`}>
+                Séance {i+1} — {s.name}
+              </button>
+              <button onClick={()=>rmSeance(s.id)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:15}}>×</button>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="Nom (ex: Push, Pull, Legs...)" className="inp" style={{flex:1}} onKeyDown={e=>e.key==="Enter"&&addSeance()} />
+          <button onClick={addSeance} className="btn btn-blue" style={{width:"auto",padding:"8px 14px",marginBottom:0}}>+ Séance</button>
+        </div>
+      </div>
+
+      {current && (
+        <>
+          <div style={{display:"flex",gap:8,marginBottom:12}}>
+            {[["log","📝 Saisir les perfs"],["history","📈 Historique & tonnage"]].map(([k,v])=>(
+              <button key={k} onClick={()=>setView(k)} className={`tab${view===k?" active":""}`}>{v}</button>
+            ))}
+          </div>
+
+          {view==="log" && (
+            <>
+              <div className="card">
+                <p className="sec">Ajouter un exercice</p>
+                <div style={{display:"flex",gap:8}}>
+                  <input value={newExo} onChange={e=>setNewExo(e.target.value)} placeholder="ex: Développé couché" className="inp" style={{flex:1}} onKeyDown={e=>e.key==="Enter"&&addExo()} />
+                  <button onClick={addExo} className="btn btn-blue" style={{width:"auto",padding:"8px 14px",marginBottom:0}}>+ Exo</button>
+                </div>
+              </div>
+              {current.exos.length>0 && (
+                <div className="card">
+                  <p className="sec">Perfs du jour — {todayStr()}</p>
+                  {current.exos.map((exo,i)=>{
+                    const sets=perf[exo.id]||[{reps:"",weight:""}];
+                    const t=sets.reduce((tt,s)=>tt+(parseFloat(s.reps)||0)*(parseFloat(s.weight)||0),0);
+                    return (
+                      <div key={exo.id} style={{marginBottom:16,paddingBottom:16,borderBottom:"1px solid var(--border)"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                          <span style={{fontWeight:500}}>{i+1}. {exo.name}</span>
+                          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                            {t>0&&<span style={{fontSize:12,color:"var(--blue)",fontWeight:500}}>{t} kg</span>}
+                            <button onClick={()=>rmExo(exo.id)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>
+                          </div>
+                        </div>
+                        {sets.map((st,j)=>(
+                          <div key={j} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
+                            <span style={{fontSize:12,color:"var(--text2)",width:52,flexShrink:0}}>Série {j+1}</span>
+                            <input type="number" value={st.reps} onChange={e=>updSet(exo.id,j,"reps",e.target.value)} placeholder="reps" className="inp" style={{width:70,flex:"none"}} />
+                            <span style={{fontSize:12,color:"var(--text2)"}}>×</span>
+                            <input type="number" step="0.5" value={st.weight} onChange={e=>updSet(exo.id,j,"weight",e.target.value)} placeholder="kg" className="inp" style={{width:70,flex:"none"}} />
+                            <span style={{fontSize:12,color:"var(--text2)"}}>kg</span>
+                            {sets.length>1&&<button onClick={()=>rmSet(exo.id,j)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>}
+                          </div>
+                        ))}
+                        <button onClick={()=>addSet(exo.id)} style={{fontSize:12,color:"var(--text2)",background:"none",border:"1px solid var(--border)",borderRadius:6,padding:"3px 10px",cursor:"pointer",marginTop:2}}>+ Série</button>
+                      </div>
+                    );
+                  })}
+                  {(()=>{
+                    const total=current.exos.reduce((t,exo)=>t+((perf[exo.id]||[]).reduce((tt,s)=>tt+(parseFloat(s.reps)||0)*(parseFloat(s.weight)||0),0)),0);
+                    return total>0&&<div style={{background:"#e8f0fb",borderRadius:8,padding:"10px 14px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{fontSize:13,fontWeight:500,color:"var(--blue)"}}>Tonnage total séance</span>
+                      <span style={{fontSize:18,fontWeight:700,color:"var(--blue)"}}>{total.toLocaleString("fr-FR")} kg</span>
+                    </div>;
+                  })()}
+                  <button onClick={logSession} className={`btn ${saved?"btn-green":"btn-blue"}`}>{saved?"✓ Séance enregistrée !":"Enregistrer la séance du jour"}</button>
+                </div>
+              )}
+            </>
+          )}
+
+          {view==="history" && (
+            <div>
+              {(!current.history||current.history.length===0) ? (
+                <div className="card" style={{textAlign:"center",padding:"2rem"}}>
+                  <p style={{color:"var(--text2)"}}>Aucune séance enregistrée.</p>
+                </div>
+              ) : [...current.history].reverse().map((h,hi)=>{
+                const totalT=h.perf.reduce((t,e)=>t+calcTonnage(e),0);
+                const idx=current.history.length-1-hi;
+                const prevH=idx>0?current.history[idx-1]:null;
+                const prevT=prevH?prevH.perf.reduce((t,e)=>t+calcTonnage(e),0):null;
+                const diffT=prevT!=null?totalT-prevT:null;
+                const diffPct=prevT?(diffT/prevT*100):null;
+                return (
+                  <div key={hi} className="card">
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                      <div>
+                        <span style={{fontWeight:500,fontSize:14}}>{fmtDate(h.date)}</span>
+                        {diffT!=null&&<span style={{fontSize:12,color:diffT>=0?"var(--green)":"var(--red)",marginLeft:10}}>
+                          {diffT>=0?"+":""}{diffT.toLocaleString("fr-FR")} kg ({diffPct>=0?"+":""}{diffPct.toFixed(1)}%)
+                        </span>}
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontSize:12,color:"var(--text2)"}}>Tonnage total</div>
+                        <div style={{fontSize:18,fontWeight:700,color:"var(--blue)"}}>{totalT.toLocaleString("fr-FR")} kg</div>
+                      </div>
+                    </div>
+                    {h.perf.map((e,ei)=>{
+                      const t=calcTonnage(e);
+                      const prevPerf=prevH?.perf.find(p=>p.exoId===e.exoId);
+                      const prevExoT=prevPerf?calcTonnage(prevPerf):null;
+                      const dExo=prevExoT!=null?t-prevExoT:null;
+                      const dExoPct=prevExoT?dExo/prevExoT*100:null;
+                      return (
+                        <div key={ei} style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid var(--border)"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                            <span style={{fontSize:13,fontWeight:500}}>{e.name}</span>
+                            <div>
+                              <span style={{fontSize:13,fontWeight:500,color:"var(--blue)"}}>{t.toLocaleString("fr-FR")} kg</span>
+                              {dExo!=null&&<span style={{fontSize:11,color:dExo>=0?"var(--green)":"var(--red)",marginLeft:8}}>
+                                {dExo>=0?"+":""}{dExo.toLocaleString("fr-FR")} kg ({dExoPct>=0?"+":""}{dExoPct.toFixed(1)}%)
+                              </span>}
+                            </div>
+                          </div>
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                            {e.sets.map((st,si)=>(
+                              <span key={si} style={{fontSize:12,padding:"3px 8px",borderRadius:6,border:"1px solid var(--border)",color:"var(--text2)"}}>
+                                S{si+1}: {st.reps}×{st.weight}kg
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── RAPPORT ────────────────────────────────────────────────────────────────
+function RapportTab({allData,weekOffset,setWeekOffset}) {
+  const [note,setNote]=useState("");
+  const [copied,setCopied]=useState(false);
+  const [generated,setGenerated]=useState(false);
+  const [reportData,setReportData]=useState(null);
+  const [syncing,setSyncing]=useState(false);
+  const [syncStatus,setSyncStatus]=useState(null);
+
+  function getEntries(offset=0) {
+    if(!allData)return[];
+    const {mon,sun}=getWeekBounds(offset);
+    return Object.values(allData).filter(e=>{const d=new Date(e.date+"T12:00:00");return d>=mon&&d<=sun;}).sort((a,b)=>a.date>b.date?1:-1);
+  }
+  function getRefOffset() {
+    if(!allData||!Object.keys(allData).length)return 0;
+    const dates=Object.keys(allData).sort();
+    return -Math.floor((new Date()-new Date(dates[0]+"T12:00:00"))/(1000*60*60*24*7));
+  }
+
+  function generate() {
+    const entries=getEntries(weekOffset);
+    if(!entries.length){setGenerated(true);setReportData(null);return;}
+    const refOffset=getRefOffset(),refEntries=getEntries(refOffset),prevEntries=getEntries(weekOffset-1);
+    const {label}=getWeekBounds(weekOffset);
+    const isFirst=weekOffset===refOffset;
+    const dv=key=>{const cur=avgArr(entries,key),prev=avgArr(prevEntries,key);if(cur==null||prev==null)return null;return{cur,prev,d:cur-prev,pct:prev?(cur-prev)/prev*100:0};};
+    const dvRef=key=>{const cur=avgArr(entries,key),ref=avgArr(refEntries,key);if(cur==null||ref==null)return null;return{cur,ref,d:cur-ref,pct:ref?(cur-ref)/ref*100:0};};
+    setReportData({entries,label,isFirst,prevEntries,refEntries,refOffset,dv,dvRef});
+    setGenerated(true);
+  }
+
+  async function syncToSheets() {
+    setSyncing(true);setSyncStatus(null);
+    try {
+      const healthEntries=Object.values(allData||{});
+      const seances=loadLocal(SEANCES_KEY)||[];
+      await sendToSheet("sante",healthEntries);
+      await sendToSheet("seances",seances);
+      setSyncStatus("ok");
+    } catch(e){setSyncStatus("err");}
+    setSyncing(false);setTimeout(()=>setSyncStatus(null),4000);
+  }
+
+  function copyText() {
+    if(!reportData)return;
+    const {entries,label,isFirst,prevEntries,dv}=reportData;
+    const lines=[`RAPPORT HEBDOMADAIRE — ${label}`,`Généré le ${new Date().toLocaleDateString("fr-FR",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}`,"","─── DÉTAIL JOUR PAR JOUR ───"];
+    entries.forEach(e=>{
+      lines.push(`\n${fmtDate(e.date).toUpperCase()}`);
+      if(e.weight)lines.push(`  Poids          : ${e.weight} kg`);
+      if(e.waist)lines.push(`  Tour de taille : ${e.waist} cm`);
+      if(e.bpmRest)lines.push(`  BPM            : ${e.bpmRest} repos / ${e.bpmLow||"—"} min / ${e.bpmHigh||"—"} max`);
+      if(e.systolic)lines.push(`  Tension        : ${e.systolic}/${e.diastolic||"—"} mmHg`);
+      if(e.steps)lines.push(`  Pas            : ${parseInt(e.steps).toLocaleString("fr-FR")}`);
+      if(e.sleepHours)lines.push(`  Sommeil        : ${e.sleepHours}h | Score: ${e.sleepScore||"—"}/100 | Profond: ${e.sleepDeep||"—"}min | Paradoxal: ${e.sleepRem||"—"}min | Léger: ${e.sleepLight||"—"}min | Éveil: ${e.sleepAwake||"—"}min`);
+      if(e.mood)lines.push(`  Humeur         : ${moodLabels[e.mood]}`);
+      if(e.digestion)lines.push(`  Digestion      : ${digLabels[e.digestion]}`);
+      if(e.moodNote)lines.push(`  Note           : "${e.moodNote}"`);
+      lines.push(`  Hydratation    : ${e.water5L?"✅ 5L atteint":"—"}`);
+    });
+    if(note.trim()){lines.push("\n─── NOTE ───");lines.push(note);}
+    const el=document.createElement("textarea");
+    el.value=lines.join("\n");el.style.position="fixed";el.style.opacity="0";
+    document.body.appendChild(el);el.focus();el.select();
+    document.execCommand("copy");document.body.removeChild(el);
+    setCopied(true);setTimeout(()=>setCopied(false),2000);
+  }
+
+  const {label:wLabel}=getWeekBounds(weekOffset);
+  const thS={padding:"8px 10px",fontSize:11,fontWeight:600,color:"var(--text2)",borderBottom:"2px solid var(--border)",background:"var(--bg2)",textAlign:"center",whiteSpace:"nowrap"};
+  const tdS={padding:"8px 10px",fontSize:12,textAlign:"center",borderBottom:"1px solid var(--border)",color:"var(--text)",whiteSpace:"nowrap"};
+  const tdL={padding:"8px 10px",fontSize:12,textAlign:"left",borderBottom:"1px solid var(--border)",fontWeight:500,color:"var(--text2)",background:"var(--bg2)",whiteSpace:"nowrap"};
+  const tdAvg={padding:"8px 10px",fontSize:12,textAlign:"center",borderBottom:"1px solid var(--border)",fontWeight:600,color:"var(--blue)",background:"#ddeaff",whiteSpace:"nowrap"};
+
+  return (
+    <div>
+      <div className="week-nav">
+        <button className="nav-btn" onClick={()=>{setWeekOffset(w=>w-1);setGenerated(false);setReportData(null);}}>←</button>
+        <span className="week-label">{wLabel}</span>
+        <button className="nav-btn" onClick={()=>{setWeekOffset(w=>Math.min(w+1,0));setGenerated(false);setReportData(null);}}>→</button>
+      </div>
+
+      <div className="card">
+        <p className="sec">Rapport hebdomadaire coach</p>
+        <button onClick={generate} className="btn btn-blue">Générer le rapport</button>
+        <button onClick={syncToSheets} disabled={syncing} className={`btn ${syncStatus==="ok"?"btn-green":syncStatus==="err"?"":"sync-btn"}`} style={{background:syncStatus==="err"?"var(--red)":undefined}}>
+          {syncing?"⏳ Envoi en cours...":syncStatus==="ok"?"✅ Google Sheet mis à jour !":syncStatus==="err"?"❌ Erreur — réessayez":"📊 Envoyer vers Google Sheet"}
+        </button>
+        {syncStatus==="ok"&&<p style={{fontSize:12,color:"var(--green)",textAlign:"center"}}>Votre coach peut voir les données maintenant.</p>}
+      </div>
+
+      {generated&&!reportData&&<div className="card" style={{textAlign:"center",padding:"2rem"}}><p style={{color:"var(--text2)"}}>Aucune donnée pour cette semaine.</p></div>}
+
+      {generated&&reportData&&(()=>{
+        const {entries,label,isFirst,prevEntries,refEntries,refOffset,dv,dvRef}=reportData;
+        const dayFmt=e=>new Date(e.date+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit"});
+        const tableRows=[
+          {label:"⚖️ Poids (kg)",      cell:e=>e.weight||"—",  avg:()=>{const v=avgArr(entries,"weight");   return v!=null?v.toFixed(1):"—";},  dvKey:"weight",   inv:false},
+          {label:"📏 Tour taille (cm)", cell:e=>e.waist||"—",   avg:()=>{const v=avgArr(entries,"waist");    return v!=null?v.toFixed(1):"—";},  dvKey:"waist",    inv:true},
+          {label:"❤️ BPM repos",        cell:e=>e.bpmRest||"—", avg:()=>{const v=avgArr(entries,"bpmRest");  return v!=null?Math.round(v):"—";}, dvKey:"bpmRest",  inv:true},
+          {label:"❤️ BPM min",          cell:e=>e.bpmLow||"—",  avg:()=>{const v=avgArr(entries,"bpmLow");   return v!=null?Math.round(v):"—";}, dvKey:null},
+          {label:"❤️ BPM max",          cell:e=>e.bpmHigh||"—", avg:()=>{const v=avgArr(entries,"bpmHigh");  return v!=null?Math.round(v):"—";}, dvKey:null},
+          {label:"🩺 Tension (mmHg)",   cell:e=>e.systolic?(e.systolic+"/"+(e.diastolic||"—")):"—", avg:()=>{const s=avgArr(entries,"systolic"),d=avgArr(entries,"diastolic");return s!=null?(Math.round(s)+"/"+(d!=null?Math.round(d):"—")):"—";},dvKey:"systolic",inv:true},
+          {label:"👣 Pas",              cell:e=>e.steps?parseInt(e.steps).toLocaleString("fr-FR"):"—", avg:()=>{const v=avgArr(entries,"steps");return v!=null?Math.round(v).toLocaleString("fr-FR"):"—";},dvKey:"steps",inv:false},
+          {label:"😴 Sommeil (h)",      cell:e=>e.sleepHours||"—", avg:()=>{const v=avgArr(entries,"sleepHours");return v!=null?v.toFixed(1):"—";},dvKey:"sleepHours",inv:false},
+          {label:"😴 Score /100",       cell:e=>e.sleepScore||"—", avg:()=>{const v=avgArr(entries,"sleepScore");return v!=null?Math.round(v):"—";},dvKey:"sleepScore",inv:false},
+          {label:"😴 Profond (min)",    cell:e=>e.sleepDeep||"—",  avg:()=>{const v=avgArr(entries,"sleepDeep"); return v!=null?Math.round(v):"—";},dvKey:null},
+          {label:"😴 Paradoxal (min)",  cell:e=>e.sleepRem||"—",   avg:()=>{const v=avgArr(entries,"sleepRem");  return v!=null?Math.round(v):"—";},dvKey:null},
+          {label:"😴 Léger (min)",      cell:e=>e.sleepLight||"—", avg:()=>{const v=avgArr(entries,"sleepLight");return v!=null?Math.round(v):"—";},dvKey:null},
+          {label:"😴 Éveil (min)",      cell:e=>e.sleepAwake||"—", avg:()=>{const v=avgArr(entries,"sleepAwake");return v!=null?Math.round(v):"—";},dvKey:null},
+          {label:"🧠 Humeur (/5)",      cell:e=>e.mood?(e.mood+"/5"):"—", avg:()=>{const v=avgArr(entries,"mood");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:"mood",inv:false},
+          {label:"🫃 Digestion (/5)",   cell:e=>e.digestion?(e.digestion+"/5"):"—", avg:()=>{const v=avgArr(entries,"digestion");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:null},
+          {label:"💧 5L eau",           cell:e=>e.water5L?"✅":"—", avg:()=>entries.filter(e=>e.water5L).length+"/"+entries.length+" j",dvKey:null},
+        ];
+        return (
+          <>
+            <div style={{marginBottom:12,borderRadius:10,border:"1px solid var(--border)",overflow:"hidden"}}>
+              <div style={{padding:"10px 14px",background:"var(--bg2)",borderBottom:"1px solid var(--border)"}}>
+                <span style={{fontWeight:600,fontSize:14}}>{label}</span>
+              </div>
+              <div style={{overflowX:"auto"}}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{...thS,textAlign:"left",minWidth:160}}>Métrique</th>
+                      {entries.map((e,i)=><th key={i} style={thS}>{dayFmt(e)}</th>)}
+                      <th style={{...thS,background:"#ddeaff",color:"var(--blue)"}}>📊 Moy.</th>
+                      {!isFirst&&prevEntries.length>0&&<th style={{...thS,background:"#f0f0f0"}}>vs sem. préc.</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tableRows.map((row,ri)=>(
+                      <tr key={ri} style={{background:ri%2===0?"transparent":"var(--bg2)"}}>
+                        <td style={{...tdL,background:ri%2===0?"var(--bg2)":"var(--bg)"}}>{row.label}</td>
+                        {entries.map((e,i)=><td key={i} style={tdS}>{row.cell(e)}</td>)}
+                        <td style={tdAvg}>{row.avg()}</td>
+                        {!isFirst&&prevEntries.length>0&&(
+                          <td style={{...tdS,background:"#f8f8f8"}}>
+                            {row.dvKey?(()=>{
+                              const d=dv(row.dvKey);if(!d)return<span style={{color:"var(--text2)"}}>—</span>;
+                              const up=d.d>=0,good=row.inv?!up:up,color=good?"var(--green)":"var(--red)";
+                              return<span style={{color,fontWeight:500}}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</span>;
+                            })():<span style={{color:"var(--text2)"}}>—</span>}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {!isFirst&&refEntries.length>0&&(
+              <div className="card" style={{marginBottom:12}}>
+                <p style={{fontWeight:600,fontSize:13,marginBottom:10}}>📈 Évolution depuis la semaine de référence</p>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
+                  {[["Poids","weight","kg",1,false],["Tour taille","waist","cm",1,true],["BPM repos","bpmRest","bpm",0,true],["Tension","systolic","mmHg",0,true],["Pas/jour","steps","",0,false],["Sommeil","sleepHours","h",1,false]].map(([n,k,u,dec,inv])=>{
+                    const d=dvRef(k);if(!d)return null;
+                    const up=d.d>=0,good=inv?!up:up;
+                    return(
+                      <div key={k} style={{background:good?"#f0faf5":"#fff5f5",borderRadius:8,padding:"8px 12px",border:`1px solid ${good?"var(--green)":"var(--red)"}33`}}>
+                        <span style={{fontSize:11,color:"var(--text2)",display:"block"}}>{n}</span>
+                        <span style={{fontSize:15,fontWeight:600,color:good?"var(--green)":"var(--red)"}}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</span>
+                        <span style={{fontSize:11,color:"var(--text2)",display:"block"}}>{up?"+":"-"}{k==="steps"?Math.round(Math.abs(d.d)).toLocaleString("fr-FR"):Math.abs(d.d).toFixed(dec)} {u} depuis départ</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="card">
+              <p style={{fontWeight:500,fontSize:13,marginBottom:8}}>📝 Note pour le coach</p>
+              <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Ajoutez une note : ressentis, observations, questions..." rows={4} className="inp" style={{fontSize:13,lineHeight:1.6}} />
+            </div>
+
+            <button onClick={copyText} className={`btn ${copied?"btn-green":"btn-blue"}`}>
+              {copied?"✓ Copié ! Collez à votre coach":"📋 Copier le rapport complet"}
+            </button>
+          </>
+        );
+      })()}
+    </div>
+  );
+}
+
+// ── MAIN ───────────────────────────────────────────────────────────────────
+function App() {
+  const [tab,setTab]=useState("saisie");
+  const [allData,setAllData]=useState({});
+  const [entry,setEntry]=useState(emptyEntry(todayStr()));
+  const [saved,setSaved]=useState(false);
+  const [weekOffset,setWeekOffset]=useState(0);
+
+  useEffect(()=>{
+    const d=loadLocal(HEALTH_KEY)||{};
+    setAllData(d);
+    setEntry(d[todayStr()]||emptyEntry(todayStr()));
+  },[]);
+
+  function changeDate(date){setEntry(allData[date]||emptyEntry(date));setSaved(false);}
+  function setF(k,v){setEntry(e=>({...e,[k]:v}));setSaved(false);}
+
+  function saveEntry(){
+    const updated={...allData,[entry.date]:{...entry}};
+    setAllData(updated);saveLocal(HEALTH_KEY,updated);
+    setSaved(true);setTimeout(()=>setSaved(false),2500);
+  }
+
+  const choiceBtn=(val,cur,label,setter)=>(
+    <button key={val} onClick={()=>setter(val)} className={`choice-btn${cur===val?" active":""}`}>{label}</button>
+  );
+
+  return (
+    <div className="app">
+      <h2 style={{fontSize:20,fontWeight:500,marginBottom:4}}>Coach Health Tracker</h2>
+      <p style={{fontSize:13,color:"var(--text2)",marginBottom:20}}>Suivi quotidien santé & performances</p>
+
+      <div className="tab-bar">
+        {[["saisie","Saisie du jour"],["seances","Séances"],["stats","Statistiques"],["rapport","Rapport coach"]].map(([k,v])=>(
+          <button key={k} onClick={()=>setTab(k)} className={`tab${tab===k?" active":""}`}>{v}</button>
+        ))}
+      </div>
+
+      {tab==="saisie" && (
+        <div>
+          <div className="card"><span className="lbl">Date</span><input type="date" value={entry.date} onChange={e=>changeDate(e.target.value)} className="inp" /></div>
+
+          <div className="card">
+            <p className="sec">❤️ Cardiaque</p>
+            <div className="row">
+              {[["bpmRest","BPM repos"],["bpmLow","BPM min"],["bpmHigh","BPM max"]].map(([k,v])=>(
+                <div key={k} className="col"><span className="lbl">{v}</span><input type="number" value={entry[k]} onChange={e=>setF(k,e.target.value)} placeholder="bpm" className="inp" /></div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card">
+            <p className="sec">😴 Sommeil</p>
+            <div className="row">
+              <div className="col"><span className="lbl">Durée (h)</span><input type="number" step="0.5" value={entry.sleepHours} onChange={e=>setF("sleepHours",e.target.value)} placeholder="7.5" className="inp" /></div>
+              <div className="col"><span className="lbl">Score /100</span><input type="number" min="0" max="100" value={entry.sleepScore} onChange={e=>setF("sleepScore",e.target.value)} placeholder="0–100" className="inp" /></div>
+            </div>
+            <p style={{fontSize:12,color:"var(--text2)",marginBottom:8,fontWeight:500}}>Phases (en minutes)</p>
+            <div className="row">
+              <div className="col"><span className="lbl">Éveil</span><input type="number" value={entry.sleepAwake} onChange={e=>setF("sleepAwake",e.target.value)} placeholder="min" className="inp" /></div>
+              <div className="col"><span className="lbl">Paradoxal</span><input type="number" value={entry.sleepRem} onChange={e=>setF("sleepRem",e.target.value)} placeholder="min" className="inp" /></div>
+            </div>
+            <div className="row">
+              <div className="col"><span className="lbl">Léger</span><input type="number" value={entry.sleepLight} onChange={e=>setF("sleepLight",e.target.value)} placeholder="min" className="inp" /></div>
+              <div className="col"><span className="lbl">Profond</span><input type="number" value={entry.sleepDeep} onChange={e=>setF("sleepDeep",e.target.value)} placeholder="min" className="inp" /></div>
+            </div>
+          </div>
+
+          <div className="card"><p className="sec">👣 Pas</p><input type="number" value={entry.steps} onChange={e=>setF("steps",e.target.value)} placeholder="ex: 8500" className="inp" /></div>
+
+          <div className="card">
+            <p className="sec">⚖️ Corps</p>
+            <div className="row">
+              <div className="col"><span className="lbl">Poids (kg)</span><input type="number" step="0.1" value={entry.weight} onChange={e=>setF("weight",e.target.value)} placeholder="78.5" className="inp" /></div>
+              <div className="col"><span className="lbl">Tour taille (cm)</span><input type="number" step="0.5" value={entry.waist} onChange={e=>setF("waist",e.target.value)} placeholder="85" className="inp" /></div>
+            </div>
+          </div>
+
+          <div className="card">
+            <p className="sec">🩺 Tension</p>
+            <div className="row">
+              <div className="col"><span className="lbl">Systolique</span><input type="number" value={entry.systolic} onChange={e=>setF("systolic",e.target.value)} placeholder="120" className="inp" /></div>
+              <div className="col"><span className="lbl">Diastolique</span><input type="number" value={entry.diastolic} onChange={e=>setF("diastolic",e.target.value)} placeholder="80" className="inp" /></div>
+            </div>
+          </div>
+
+          <div className="card">
+            <p className="sec">🧠 Humeur</p>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+              {[1,2,3,4,5].map(i=>choiceBtn(i,entry.mood,moodLabels[i],v=>setF("mood",v)))}
+            </div>
+            <textarea value={entry.moodNote} onChange={e=>setF("moodNote",e.target.value)} placeholder="Note libre..." rows={2} className="inp" />
+          </div>
+
+          <div className="card">
+            <p className="sec">🫃 Digestion</p>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {[1,2,3,4,5].map(i=>choiceBtn(i,entry.digestion,digLabels[i],v=>setF("digestion",v)))}
+            </div>
+          </div>
+
+          <div className="card">
+            <p className="sec">💧 Hydratation</p>
+            <button onClick={()=>setF("water5L",!entry.water5L)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:8,border:entry.water5L?"2px solid var(--blue)":"1px solid var(--border)",background:entry.water5L?"#e8f0fb":"var(--bg)",cursor:"pointer",width:"100%"}}>
+              <span style={{width:22,height:22,borderRadius:6,border:entry.water5L?"2px solid var(--blue)":"1.5px solid var(--border)",background:entry.water5L?"var(--blue)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {entry.water5L&&<span style={{color:"#fff",fontSize:14,fontWeight:700}}>✓</span>}
+              </span>
+              <span style={{fontSize:14,fontWeight:entry.water5L?500:400}}>J'ai bu 5L d'eau aujourd'hui</span>
+            </button>
+          </div>
+
+          <button onClick={saveEntry} className={`btn ${saved?"btn-green":"btn-blue"}`}>{saved?"✓ Sauvegardé !":"Sauvegarder la journée"}</button>
+        </div>
+      )}
+
+      {tab==="seances" && <SeancesTab />}
+      {tab==="stats"   && <StatsTab allData={allData} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />}
+      {tab==="rapport" && <RapportTab allData={allData} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
