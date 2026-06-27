@@ -43,7 +43,7 @@
     }
     .pdf-page { display:none; }
     #pdf-content {
-      font-family: 'Georgia', serif;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
       color: #1a1a1a;
       background: #fff;
       padding: 32px 40px;
@@ -394,22 +394,22 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
   const dayFmt=e=>new Date(e.date+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit"});
 
   const tableRows=[
-    {label:"Poids (kg)",cell:e=>e.weight||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"weight");return v!=null?v.toFixed(1):"—";},dvKey:"weight",inv:false},
-    {label:"Tour taille (cm)",cell:e=>e.waist||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"waist");return v!=null?v.toFixed(1):"—";},dvKey:"waist",inv:true},
-    {label:"BPM repos",cell:e=>e.bpmRest||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"bpmRest");return v!=null?Math.round(v):"—";},dvKey:"bpmRest",inv:true},
-    {label:"BPM min",cell:e=>e.bpmLow||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"bpmLow");return v!=null?Math.round(v):"—";},dvKey:null},
-    {label:"BPM max",cell:e=>e.bpmHigh||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"bpmHigh");return v!=null?Math.round(v):"—";},dvKey:null},
-    {label:"Tension (mmHg)",cell:e=>e.systolic?(e.systolic+"/"+(e.diastolic||"—")):"—",avg:()=>{const s=avgArr(reportData?.entries||[],"systolic"),d=avgArr(reportData?.entries||[],"diastolic");return s!=null?(Math.round(s)+"/"+(d!=null?Math.round(d):"—")):"—";},dvKey:"systolic",inv:true},
-    {label:"Pas",cell:e=>e.steps?parseInt(e.steps).toLocaleString("fr-FR"):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"steps");return v!=null?Math.round(v).toLocaleString("fr-FR"):"—";},dvKey:"steps",inv:false},
-    {label:"Sommeil (h)",cell:e=>e.sleepHours||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepHours");return v!=null?v.toFixed(1):"—";},dvKey:"sleepHours",inv:false},
-    {label:"Score sommeil /100",cell:e=>e.sleepScore||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepScore");return v!=null?Math.round(v):"—";},dvKey:"sleepScore",inv:false},
-    {label:"Sommeil profond (min)",cell:e=>e.sleepDeep||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepDeep");return v!=null?Math.round(v):"—";},dvKey:null},
-    {label:"Sommeil paradoxal (min)",cell:e=>e.sleepRem||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepRem");return v!=null?Math.round(v):"—";},dvKey:null},
-    {label:"Sommeil léger (min)",cell:e=>e.sleepLight||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepLight");return v!=null?Math.round(v):"—";},dvKey:null},
-    {label:"Éveil (min)",cell:e=>e.sleepAwake||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepAwake");return v!=null?Math.round(v):"—";},dvKey:null},
-    {label:"Humeur /5",cell:e=>e.mood?(e.mood+"/5 — "+moodTxt(e.mood)):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"mood");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:"mood",inv:false},
-    {label:"Digestion /5",cell:e=>e.digestion?(e.digestion+"/5 — "+digTxt(e.digestion)):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"digestion");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:null},
-    {label:"Hydratation 5L",cell:e=>e.water5L?"Oui":"Non",avg:()=>{const e=reportData?.entries||[];return e.filter(x=>x.water5L).length+"/"+e.length+" jours";},dvKey:null},
+    {label:"⚖️ Poids (kg)",cell:e=>e.weight||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"weight");return v!=null?v.toFixed(1):"—";},dvKey:"weight",inv:false},
+    {label:"📏 Tour taille (cm)",cell:e=>e.waist||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"waist");return v!=null?v.toFixed(1):"—";},dvKey:"waist",inv:true},
+    {label:"❤️ BPM repos",cell:e=>e.bpmRest||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"bpmRest");return v!=null?Math.round(v):"—";},dvKey:"bpmRest",inv:true},
+    {label:"❤️ BPM min",cell:e=>e.bpmLow||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"bpmLow");return v!=null?Math.round(v):"—";},dvKey:null},
+    {label:"❤️ BPM max",cell:e=>e.bpmHigh||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"bpmHigh");return v!=null?Math.round(v):"—";},dvKey:null},
+    {label:"🩺 Tension (mmHg)",cell:e=>e.systolic?(e.systolic+"/"+(e.diastolic||"—")):"—",avg:()=>{const s=avgArr(reportData?.entries||[],"systolic"),d=avgArr(reportData?.entries||[],"diastolic");return s!=null?(Math.round(s)+"/"+(d!=null?Math.round(d):"—")):"—";},dvKey:"systolic",inv:true},
+    {label:"👣 Pas",cell:e=>e.steps?parseInt(e.steps).toLocaleString("fr-FR"):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"steps");return v!=null?Math.round(v).toLocaleString("fr-FR"):"—";},dvKey:"steps",inv:false},
+    {label:"😴 Sommeil (h)",cell:e=>e.sleepHours||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepHours");return v!=null?v.toFixed(1):"—";},dvKey:"sleepHours",inv:false},
+    {label:"😴 Score sommeil /100",cell:e=>e.sleepScore||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepScore");return v!=null?Math.round(v):"—";},dvKey:"sleepScore",inv:false},
+    {label:"😴 Profond (min)",cell:e=>e.sleepDeep||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepDeep");return v!=null?Math.round(v):"—";},dvKey:null},
+    {label:"😴 Paradoxal (min)",cell:e=>e.sleepRem||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepRem");return v!=null?Math.round(v):"—";},dvKey:null},
+    {label:"😴 Léger (min)",cell:e=>e.sleepLight||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepLight");return v!=null?Math.round(v):"—";},dvKey:null},
+    {label:"😴 Éveil (min)",cell:e=>e.sleepAwake||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepAwake");return v!=null?Math.round(v):"—";},dvKey:null},
+    {label:"🧠 Humeur /5",cell:e=>e.mood?(e.mood+"/5 — "+moodTxt(e.mood)):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"mood");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:"mood",inv:false},
+    {label:"🫃 Digestion /5",cell:e=>e.digestion?(e.digestion+"/5 — "+digTxt(e.digestion)):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"digestion");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:null},
+    {label:"💧 Hydratation 5L",cell:e=>e.water5L?"✅ Oui":"Non",avg:()=>{const e=reportData?.entries||[];return e.filter(x=>x.water5L).length+"/"+e.length+" jours";},dvKey:null},
   ];
 
   return(
@@ -572,7 +572,6 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
             <div className="pdf-footer">
               <span>Redskull Training — Dylan Gonthier</span>
               <span>{label}</span>
-              <span>Coach Health Tracker</span>
             </div>
           </div>
         );
