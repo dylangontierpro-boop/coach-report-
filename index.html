@@ -33,6 +33,60 @@
     .week-nav{display:flex;align-items:center;gap:12px;margin-bottom:16px}
     .week-label{flex:1;text-align:center;font-size:13px;font-weight:500}
     textarea{resize:vertical}
+
+    /* ── STYLES PDF ── */
+    @media print {
+      body { background: #fff !important; }
+      .app { max-width:100%; padding:0; }
+      .no-print { display:none !important; }
+      .pdf-page { display:block !important; }
+    }
+    .pdf-page { display:none; }
+    #pdf-content {
+      font-family: 'Georgia', serif;
+      color: #1a1a1a;
+      background: #fff;
+      padding: 32px 40px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .pdf-header {
+      border-bottom: 3px solid #1a1a1a;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .pdf-header-left h1 { font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+    .pdf-header-left h2 { font-size: 13px; font-weight: 400; color: #555; margin-top: 4px; letter-spacing: 2px; text-transform: uppercase; }
+    .pdf-header-right { text-align: right; font-size: 12px; color: #555; }
+    .pdf-header-right strong { font-size: 14px; color: #1a1a1a; display: block; }
+    .pdf-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #555;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 4px;
+      margin: 20px 0 12px;
+    }
+    .pdf-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 8px; }
+    .pdf-table th { background: #1a1a1a; color: #fff; padding: 6px 8px; text-align: center; font-size: 10px; font-weight: 600; letter-spacing: 0.5px; white-space: nowrap; }
+    .pdf-table th.left { text-align: left; }
+    .pdf-table td { padding: 5px 8px; text-align: center; border-bottom: 1px solid #e0e0e0; white-space: nowrap; }
+    .pdf-table td.left { text-align: left; font-weight: 500; color: #333; }
+    .pdf-table tr:nth-child(even) td { background: #f9f9f9; }
+    .pdf-table .avg-row td { background: #f0f0f0; font-weight: 700; border-top: 2px solid #1a1a1a; }
+    .pdf-evol { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom:8px; }
+    .pdf-evol-card { border: 1px solid #ccc; border-radius: 4px; padding: 8px 10px; }
+    .pdf-evol-card .evol-label { font-size: 10px; color: #555; margin-bottom: 2px; }
+    .pdf-evol-card .evol-val { font-size: 14px; font-weight: 700; }
+    .pdf-evol-card .evol-abs { font-size: 10px; color: #555; }
+    .pdf-note { border: 1px solid #ccc; border-radius: 4px; padding: 12px 14px; font-size: 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; min-height: 60px; }
+    .pdf-footer { margin-top: 24px; border-top: 1px solid #ccc; padding-top: 10px; display: flex; justify-content: space-between; font-size: 10px; color: #999; }
+    .good { color: #1D9E75; } .bad { color: #E24B4A; }
   </style>
 </head>
 <body>
@@ -292,11 +346,11 @@ function SeancesTab(){
 // ── RAPPORT ──
 function RapportTab({allData,weekOffset,setWeekOffset}){
   const[note,setNote]=useState("");
-  const[copied,setCopied]=useState(false);
   const[generated,setGenerated]=useState(false);
   const[reportData,setReportData]=useState(null);
   const[syncing,setSyncing]=useState(false);
   const[syncStatus,setSyncStatus]=useState(null);
+  const[pdfMode,setPdfMode]=useState(false);
 
   function getEntries(offset=0){if(!allData)return[];const{mon,sun}=getWeekBounds(offset);return Object.values(allData).filter(e=>{const d=new Date(e.date+"T12:00:00");return d>=mon&&d<=sun;}).sort((a,b)=>a.date>b.date?1:-1);}
   function getRefOffset(){if(!allData||!Object.keys(allData).length)return 0;const dates=Object.keys(allData).sort();return -Math.floor((new Date()-new Date(dates[0]+"T12:00:00"))/(1000*60*60*24*7));}
@@ -324,29 +378,9 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
     setSyncing(false);setTimeout(()=>setSyncStatus(null),4000);
   }
 
-  function copyText(){
-    if(!reportData)return;
-    const{entries,label,isFirst,prevEntries,dv}=reportData;
-    const lines=[`RAPPORT HEBDOMADAIRE — ${label}`,`Généré le ${new Date().toLocaleDateString("fr-FR",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}`,"","─── DÉTAIL JOUR PAR JOUR ───"];
-    entries.forEach(e=>{
-      lines.push(`\n${fmtDate(e.date).toUpperCase()}`);
-      if(e.weight)lines.push(`  Poids          : ${e.weight} kg`);
-      if(e.waist)lines.push(`  Tour de taille : ${e.waist} cm`);
-      if(e.bpmRest)lines.push(`  BPM            : ${e.bpmRest} repos / ${e.bpmLow||"—"} min / ${e.bpmHigh||"—"} max`);
-      if(e.systolic)lines.push(`  Tension        : ${e.systolic}/${e.diastolic||"—"} mmHg`);
-      if(e.steps)lines.push(`  Pas            : ${parseInt(e.steps).toLocaleString("fr-FR")}`);
-      if(e.sleepHours)lines.push(`  Sommeil        : ${e.sleepHours}h | Score: ${e.sleepScore||"—"}/100 | Profond: ${e.sleepDeep||"—"}min | Paradoxal: ${e.sleepRem||"—"}min | Léger: ${e.sleepLight||"—"}min | Éveil: ${e.sleepAwake||"—"}min`);
-      if(e.mood)lines.push(`  Humeur         : ${moodLabels[e.mood]}`);
-      if(e.digestion)lines.push(`  Digestion      : ${digLabels[e.digestion]}`);
-      if(e.moodNote)lines.push(`  Note           : "${e.moodNote}"`);
-      lines.push(`  Hydratation    : ${e.water5L?"✅ 5L atteint":"—"}`);
-    });
-    if(note.trim()){lines.push("\n─── NOTE ───");lines.push(note);}
-    const el=document.createElement("textarea");
-    el.value=lines.join("\n");el.style.position="fixed";el.style.opacity="0";
-    document.body.appendChild(el);el.focus();el.select();
-    document.execCommand("copy");document.body.removeChild(el);
-    setCopied(true);setTimeout(()=>setCopied(false),2000);
+  function printPDF(){
+    setPdfMode(true);
+    setTimeout(()=>{window.print();setTimeout(()=>setPdfMode(false),1000);},300);
   }
 
   const{label:wLabel}=getWeekBounds(weekOffset);
@@ -355,96 +389,192 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
   const tdL={padding:"8px 10px",fontSize:12,textAlign:"left",borderBottom:"1px solid var(--border)",fontWeight:500,color:"var(--text2)",background:"var(--bg2)",whiteSpace:"nowrap"};
   const tdAvg={padding:"8px 10px",fontSize:12,textAlign:"center",borderBottom:"1px solid var(--border)",fontWeight:600,color:"var(--blue)",background:"#ddeaff",whiteSpace:"nowrap"};
 
+  const moodTxt=v=>["","Très bas","Bas","Neutre","Bien","Excellent"][v]||"—";
+  const digTxt=v=>["","Mauvaise","Difficile","Normale","Bonne","Excellente"][v]||"—";
+  const dayFmt=e=>new Date(e.date+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit"});
+
+  const tableRows=[
+    {label:"Poids (kg)",cell:e=>e.weight||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"weight");return v!=null?v.toFixed(1):"—";},dvKey:"weight",inv:false},
+    {label:"Tour taille (cm)",cell:e=>e.waist||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"waist");return v!=null?v.toFixed(1):"—";},dvKey:"waist",inv:true},
+    {label:"BPM repos",cell:e=>e.bpmRest||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"bpmRest");return v!=null?Math.round(v):"—";},dvKey:"bpmRest",inv:true},
+    {label:"BPM min",cell:e=>e.bpmLow||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"bpmLow");return v!=null?Math.round(v):"—";},dvKey:null},
+    {label:"BPM max",cell:e=>e.bpmHigh||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"bpmHigh");return v!=null?Math.round(v):"—";},dvKey:null},
+    {label:"Tension (mmHg)",cell:e=>e.systolic?(e.systolic+"/"+(e.diastolic||"—")):"—",avg:()=>{const s=avgArr(reportData?.entries||[],"systolic"),d=avgArr(reportData?.entries||[],"diastolic");return s!=null?(Math.round(s)+"/"+(d!=null?Math.round(d):"—")):"—";},dvKey:"systolic",inv:true},
+    {label:"Pas",cell:e=>e.steps?parseInt(e.steps).toLocaleString("fr-FR"):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"steps");return v!=null?Math.round(v).toLocaleString("fr-FR"):"—";},dvKey:"steps",inv:false},
+    {label:"Sommeil (h)",cell:e=>e.sleepHours||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepHours");return v!=null?v.toFixed(1):"—";},dvKey:"sleepHours",inv:false},
+    {label:"Score sommeil /100",cell:e=>e.sleepScore||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepScore");return v!=null?Math.round(v):"—";},dvKey:"sleepScore",inv:false},
+    {label:"Sommeil profond (min)",cell:e=>e.sleepDeep||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepDeep");return v!=null?Math.round(v):"—";},dvKey:null},
+    {label:"Sommeil paradoxal (min)",cell:e=>e.sleepRem||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepRem");return v!=null?Math.round(v):"—";},dvKey:null},
+    {label:"Sommeil léger (min)",cell:e=>e.sleepLight||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepLight");return v!=null?Math.round(v):"—";},dvKey:null},
+    {label:"Éveil (min)",cell:e=>e.sleepAwake||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepAwake");return v!=null?Math.round(v):"—";},dvKey:null},
+    {label:"Humeur /5",cell:e=>e.mood?(e.mood+"/5 — "+moodTxt(e.mood)):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"mood");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:"mood",inv:false},
+    {label:"Digestion /5",cell:e=>e.digestion?(e.digestion+"/5 — "+digTxt(e.digestion)):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"digestion");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:null},
+    {label:"Hydratation 5L",cell:e=>e.water5L?"Oui":"Non",avg:()=>{const e=reportData?.entries||[];return e.filter(x=>x.water5L).length+"/"+e.length+" jours";},dvKey:null},
+  ];
+
   return(
     <div>
-      <div className="week-nav">
-        <button className="nav-btn" onClick={()=>{setWeekOffset(w=>w-1);setGenerated(false);setReportData(null);}}>←</button>
-        <span className="week-label">{wLabel}</span>
-        <button className="nav-btn" onClick={()=>{setWeekOffset(w=>Math.min(w+1,0));setGenerated(false);setReportData(null);}}>→</button>
-      </div>
-      <div className="card">
-        <p className="sec">Rapport hebdomadaire coach</p>
-        <button onClick={generate} className="btn btn-blue">Générer le rapport</button>
-        <button onClick={syncToSheets} disabled={syncing} className="btn" style={{background:syncStatus==="ok"?"var(--green)":syncStatus==="err"?"var(--red)":"#0f9d58"}}>
-          {syncing?"⏳ Envoi en cours...":syncStatus==="ok"?"✅ Google Sheet mis à jour !":syncStatus==="err"?"❌ Erreur — réessayez":"📊 Envoyer vers Google Sheet"}
-        </button>
-        {syncStatus==="ok"&&<p style={{fontSize:12,color:"var(--green)",textAlign:"center"}}>Votre coach peut voir les données maintenant.</p>}
-      </div>
-      {generated&&!reportData&&<div className="card" style={{textAlign:"center",padding:"2rem"}}><p style={{color:"var(--text2)"}}>Aucune donnée pour cette semaine.</p></div>}
-      {generated&&reportData&&(()=>{
-        const{entries,label,isFirst,prevEntries,refEntries,refOffset,dv,dvRef}=reportData;
-        const dayFmt=e=>new Date(e.date+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit"});
-        const tableRows=[
-          {label:"⚖️ Poids (kg)",cell:e=>e.weight||"—",avg:()=>{const v=avgArr(entries,"weight");return v!=null?v.toFixed(1):"—";},dvKey:"weight",inv:false},
-          {label:"📏 Tour (cm)",cell:e=>e.waist||"—",avg:()=>{const v=avgArr(entries,"waist");return v!=null?v.toFixed(1):"—";},dvKey:"waist",inv:true},
-          {label:"❤️ BPM repos",cell:e=>e.bpmRest||"—",avg:()=>{const v=avgArr(entries,"bpmRest");return v!=null?Math.round(v):"—";},dvKey:"bpmRest",inv:true},
-          {label:"❤️ BPM min",cell:e=>e.bpmLow||"—",avg:()=>{const v=avgArr(entries,"bpmLow");return v!=null?Math.round(v):"—";},dvKey:null},
-          {label:"❤️ BPM max",cell:e=>e.bpmHigh||"—",avg:()=>{const v=avgArr(entries,"bpmHigh");return v!=null?Math.round(v):"—";},dvKey:null},
-          {label:"🩺 Tension",cell:e=>e.systolic?(e.systolic+"/"+(e.diastolic||"—")):"—",avg:()=>{const s=avgArr(entries,"systolic"),d=avgArr(entries,"diastolic");return s!=null?(Math.round(s)+"/"+(d!=null?Math.round(d):"—")):"—";},dvKey:"systolic",inv:true},
-          {label:"👣 Pas",cell:e=>e.steps?parseInt(e.steps).toLocaleString("fr-FR"):"—",avg:()=>{const v=avgArr(entries,"steps");return v!=null?Math.round(v).toLocaleString("fr-FR"):"—";},dvKey:"steps",inv:false},
-          {label:"😴 Sommeil (h)",cell:e=>e.sleepHours||"—",avg:()=>{const v=avgArr(entries,"sleepHours");return v!=null?v.toFixed(1):"—";},dvKey:"sleepHours",inv:false},
-          {label:"😴 Score /100",cell:e=>e.sleepScore||"—",avg:()=>{const v=avgArr(entries,"sleepScore");return v!=null?Math.round(v):"—";},dvKey:"sleepScore",inv:false},
-          {label:"😴 Profond (min)",cell:e=>e.sleepDeep||"—",avg:()=>{const v=avgArr(entries,"sleepDeep");return v!=null?Math.round(v):"—";},dvKey:null},
-          {label:"😴 Paradoxal (min)",cell:e=>e.sleepRem||"—",avg:()=>{const v=avgArr(entries,"sleepRem");return v!=null?Math.round(v):"—";},dvKey:null},
-          {label:"😴 Léger (min)",cell:e=>e.sleepLight||"—",avg:()=>{const v=avgArr(entries,"sleepLight");return v!=null?Math.round(v):"—";},dvKey:null},
-          {label:"😴 Éveil (min)",cell:e=>e.sleepAwake||"—",avg:()=>{const v=avgArr(entries,"sleepAwake");return v!=null?Math.round(v):"—";},dvKey:null},
-          {label:"🧠 Humeur /5",cell:e=>e.mood?(e.mood+"/5"):"—",avg:()=>{const v=avgArr(entries,"mood");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:"mood",inv:false},
-          {label:"🫃 Digestion /5",cell:e=>e.digestion?(e.digestion+"/5"):"—",avg:()=>{const v=avgArr(entries,"digestion");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:null},
-          {label:"💧 5L eau",cell:e=>e.water5L?"✅":"—",avg:()=>entries.filter(e=>e.water5L).length+"/"+entries.length+" j",dvKey:null},
-        ];
-        return(
-          <>
-            <div style={{marginBottom:12,borderRadius:10,border:"1px solid var(--border)",overflow:"hidden"}}>
-              <div style={{padding:"10px 14px",background:"var(--bg2)",borderBottom:"1px solid var(--border)"}}><span style={{fontWeight:600,fontSize:14}}>{label}</span></div>
-              <div style={{overflowX:"auto"}}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th style={{...thS,textAlign:"left",minWidth:160}}>Métrique</th>
-                      {entries.map((e,i)=><th key={i} style={thS}>{dayFmt(e)}</th>)}
-                      <th style={{...thS,background:"#ddeaff",color:"var(--blue)"}}>📊 Moy.</th>
-                      {!isFirst&&prevEntries.length>0&&<th style={{...thS,background:"#f0f0f0"}}>vs préc.</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tableRows.map((row,ri)=>(
-                      <tr key={ri} style={{background:ri%2===0?"transparent":"var(--bg2)"}}>
-                        <td style={{...tdL,background:ri%2===0?"var(--bg2)":"var(--bg)"}}>{row.label}</td>
-                        {entries.map((e,i)=><td key={i} style={tdS}>{row.cell(e)}</td>)}
-                        <td style={tdAvg}>{row.avg()}</td>
-                        {!isFirst&&prevEntries.length>0&&(
-                          <td style={{...tdS,background:"#f8f8f8"}}>
-                            {row.dvKey?(()=>{const d=dv(row.dvKey);if(!d)return<span style={{color:"var(--text2)"}}>—</span>;const up=d.d>=0,good=row.inv?!up:up,color=good?"var(--green)":"var(--red)";return<span style={{color,fontWeight:500}}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</span>;})():<span style={{color:"var(--text2)"}}>—</span>}
-                          </td>
-                        )}
+      {/* Interface normale */}
+      <div className="no-print">
+        <div className="week-nav">
+          <button className="nav-btn" onClick={()=>{setWeekOffset(w=>w-1);setGenerated(false);setReportData(null);}}>←</button>
+          <span className="week-label">{wLabel}</span>
+          <button className="nav-btn" onClick={()=>{setWeekOffset(w=>Math.min(w+1,0));setGenerated(false);setReportData(null);}}>→</button>
+        </div>
+        <div className="card">
+          <p className="sec">Rapport hebdomadaire coach</p>
+          <button onClick={generate} className="btn btn-blue">Générer le rapport</button>
+          <button onClick={syncToSheets} disabled={syncing} className="btn" style={{background:syncStatus==="ok"?"var(--green)":syncStatus==="err"?"var(--red)":"#0f9d58"}}>
+            {syncing?"⏳ Envoi en cours...":syncStatus==="ok"?"✅ Google Sheet mis à jour !":syncStatus==="err"?"❌ Erreur — réessayez":"📊 Envoyer vers Google Sheet"}
+          </button>
+          {syncStatus==="ok"&&<p style={{fontSize:12,color:"var(--green)",textAlign:"center"}}>Votre coach peut voir les données maintenant.</p>}
+        </div>
+
+        {generated&&!reportData&&<div className="card" style={{textAlign:"center",padding:"2rem"}}><p style={{color:"var(--text2)"}}>Aucune donnée pour cette semaine.</p></div>}
+
+        {generated&&reportData&&(()=>{
+          const{entries,label,isFirst,prevEntries,refEntries,dv,dvRef}=reportData;
+          return(
+            <>
+              <div style={{marginBottom:12,borderRadius:10,border:"1px solid var(--border)",overflow:"hidden"}}>
+                <div style={{padding:"10px 14px",background:"var(--bg2)",borderBottom:"1px solid var(--border)"}}><span style={{fontWeight:600,fontSize:14}}>{label}</span></div>
+                <div style={{overflowX:"auto"}}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style={{...thS,textAlign:"left",minWidth:180}}>Métrique</th>
+                        {entries.map((e,i)=><th key={i} style={thS}>{dayFmt(e)}</th>)}
+                        <th style={{...thS,background:"#ddeaff",color:"var(--blue)"}}>Moy.</th>
+                        {!isFirst&&prevEntries.length>0&&<th style={{...thS,background:"#f0f0f0"}}>vs préc.</th>}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {tableRows.map((row,ri)=>(
+                        <tr key={ri} style={{background:ri%2===0?"transparent":"var(--bg2)"}}>
+                          <td style={{...tdL,background:ri%2===0?"var(--bg2)":"var(--bg)"}}>{row.label}</td>
+                          {entries.map((e,i)=><td key={i} style={tdS}>{row.cell(e)}</td>)}
+                          <td style={tdAvg}>{row.avg()}</td>
+                          {!isFirst&&prevEntries.length>0&&(
+                            <td style={{...tdS,background:"#f8f8f8"}}>
+                              {row.dvKey?(()=>{const d=dv(row.dvKey);if(!d)return<span style={{color:"var(--text2)"}}>—</span>;const up=d.d>=0,good=row.inv?!up:up,color=good?"var(--green)":"var(--red)";return<span style={{color,fontWeight:500}}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</span>;})():<span style={{color:"var(--text2)"}}>—</span>}
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {!isFirst&&refEntries.length>0&&(
+                <div className="card" style={{marginBottom:12}}>
+                  <p style={{fontWeight:600,fontSize:13,marginBottom:10}}>Évolution depuis la semaine de référence</p>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
+                    {[["Poids","weight","kg",1,false],["Tour taille","waist","cm",1,true],["BPM repos","bpmRest","bpm",0,true],["Tension","systolic","mmHg",0,true],["Pas/jour","steps","",0,false],["Sommeil","sleepHours","h",1,false]].map(([n,k,u,dec,inv])=>{
+                      const d=dvRef(k);if(!d)return null;
+                      const up=d.d>=0,good=inv?!up:up;
+                      return(<div key={k} style={{background:good?"#f0faf5":"#fff5f5",borderRadius:8,padding:"8px 12px",border:`1px solid ${good?"var(--green)":"var(--red)"}33`}}>
+                        <span style={{fontSize:11,color:"var(--text2)",display:"block"}}>{n}</span>
+                        <span style={{fontSize:15,fontWeight:600,color:good?"var(--green)":"var(--red)"}}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</span>
+                        <span style={{fontSize:11,color:"var(--text2)",display:"block"}}>{up?"+":"-"}{k==="steps"?Math.round(Math.abs(d.d)).toLocaleString("fr-FR"):Math.abs(d.d).toFixed(dec)} {u} depuis départ</span>
+                      </div>);
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="card">
+                <p style={{fontWeight:500,fontSize:13,marginBottom:8}}>Note pour le coach</p>
+                <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Ajoutez une note : ressentis, observations, questions pour votre coach..." rows={5} className="inp" style={{fontSize:13,lineHeight:1.6}} />
+              </div>
+
+              <button onClick={printPDF} className="btn btn-blue">🖨️ Imprimer / Enregistrer en PDF</button>
+              <p style={{fontSize:11,color:"var(--text2)",textAlign:"center",marginTop:-4,marginBottom:12}}>Dans la fenêtre d'impression → choisissez "Enregistrer en PDF"</p>
+            </>
+          );
+        })()}
+      </div>
+
+      {/* PAGE PDF — visible uniquement à l'impression */}
+      {generated&&reportData&&(()=>{
+        const{entries,label,isFirst,prevEntries,refEntries,dv,dvRef}=reportData;
+        return(
+          <div id="pdf-content" style={{display:pdfMode?"block":"none"}}>
+            {/* En-tête */}
+            <div className="pdf-header">
+              <div className="pdf-header-left">
+                <h1>REDSKULL TRAINING</h1>
+                <h2>Rapport de suivi hebdomadaire</h2>
+              </div>
+              <div className="pdf-header-right">
+                <strong>Dylan Gonthier</strong>
+                {label}<br/>
+                Généré le {new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})}
               </div>
             </div>
+
+            {/* Tableau données */}
+            <div className="pdf-section-title">Données hebdomadaires</div>
+            <table className="pdf-table">
+              <thead>
+                <tr>
+                  <th className="left" style={{minWidth:160}}>Métrique</th>
+                  {entries.map((e,i)=><th key={i}>{new Date(e.date+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"})}</th>)}
+                  <th style={{background:"#444"}}>Moyenne</th>
+                  {!isFirst&&prevEntries.length>0&&<th style={{background:"#444"}}>vs préc.</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {tableRows.map((row,ri)=>(
+                  <tr key={ri}>
+                    <td className="left">{row.label}</td>
+                    {entries.map((e,i)=><td key={i}>{row.cell(e)}</td>)}
+                    <td style={{fontWeight:700,background:"#f0f0f0"}}>{row.avg()}</td>
+                    {!isFirst&&prevEntries.length>0&&(
+                      <td>
+                        {row.dvKey?(()=>{const d=dv(row.dvKey);if(!d)return"—";const up=d.d>=0,good=row.inv?!up:up;return<span className={good?"good":"bad"}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</span>;})():"—"}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Évolution vs référence */}
             {!isFirst&&refEntries.length>0&&(
-              <div className="card" style={{marginBottom:12}}>
-                <p style={{fontWeight:600,fontSize:13,marginBottom:10}}>📈 Évolution depuis la semaine de référence</p>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
+              <>
+                <div className="pdf-section-title">Évolution depuis la semaine de référence</div>
+                <div className="pdf-evol">
                   {[["Poids","weight","kg",1,false],["Tour taille","waist","cm",1,true],["BPM repos","bpmRest","bpm",0,true],["Tension","systolic","mmHg",0,true],["Pas/jour","steps","",0,false],["Sommeil","sleepHours","h",1,false]].map(([n,k,u,dec,inv])=>{
                     const d=dvRef(k);if(!d)return null;
                     const up=d.d>=0,good=inv?!up:up;
-                    return(<div key={k} style={{background:good?"#f0faf5":"#fff5f5",borderRadius:8,padding:"8px 12px",border:`1px solid ${good?"var(--green)":"var(--red)"}33`}}>
-                      <span style={{fontSize:11,color:"var(--text2)",display:"block"}}>{n}</span>
-                      <span style={{fontSize:15,fontWeight:600,color:good?"var(--green)":"var(--red)"}}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</span>
-                      <span style={{fontSize:11,color:"var(--text2)",display:"block"}}>{up?"+":"-"}{k==="steps"?Math.round(Math.abs(d.d)).toLocaleString("fr-FR"):Math.abs(d.d).toFixed(dec)} {u} depuis départ</span>
-                    </div>);
+                    return(
+                      <div key={k} className="pdf-evol-card">
+                        <div className="evol-label">{n}</div>
+                        <div className={`evol-val ${good?"good":"bad"}`}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</div>
+                        <div className="evol-abs">{up?"+":"-"}{k==="steps"?Math.round(Math.abs(d.d)).toLocaleString("fr-FR"):Math.abs(d.d).toFixed(dec)} {u} depuis départ</div>
+                      </div>
+                    );
                   })}
                 </div>
-              </div>
+              </>
             )}
-            <div className="card">
-              <p style={{fontWeight:500,fontSize:13,marginBottom:8}}>📝 Note pour le coach</p>
-              <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Ajoutez une note : ressentis, observations, questions..." rows={4} className="inp" style={{fontSize:13,lineHeight:1.6}} />
+
+            {/* Note du coach */}
+            {note.trim()&&(
+              <>
+                <div className="pdf-section-title">Note</div>
+                <div className="pdf-note">{note}</div>
+              </>
+            )}
+
+            {/* Footer */}
+            <div className="pdf-footer">
+              <span>Redskull Training — Dylan Gonthier</span>
+              <span>{label}</span>
+              <span>Coach Health Tracker</span>
             </div>
-            <button onClick={copyText} className={`btn ${copied?"btn-green":"btn-blue"}`}>{copied?"✓ Copié !":"📋 Copier le rapport complet"}</button>
-          </>
+          </div>
         );
       })()}
     </div>
