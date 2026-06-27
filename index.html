@@ -40,6 +40,10 @@
       .app { max-width:100%; padding:0; }
       .no-print { display:none !important; }
       .pdf-page { display:block !important; }
+      h2, .app > p { display:none !important; }
+      .tab-bar { display:none !important; }
+      a[href]::after { content: none !important; }
+      @page { margin: 10mm; }
     }
     .pdf-page { display:none; }
     #pdf-content {
