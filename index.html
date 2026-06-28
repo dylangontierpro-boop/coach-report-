@@ -360,13 +360,20 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
   function getRefOffset(){if(!allData||!Object.keys(allData).length)return 0;const dates=Object.keys(allData).sort();return -Math.floor((new Date()-new Date(dates[0]+"T12:00:00"))/(1000*60*60*24*7));}
 
   function generate(){
-    const entries=getEntries(weekOffset);
+    if(!allData)return;
+    const from=new Date(dateFrom+"T00:00:00"),to=new Date(dateTo+"T23:59:59");
+    if(from>to){alert("La date de début doit être avant la date de fin.");return;}
+    const entries=Object.values(allData).filter(e=>{const d=new Date(e.date+"T12:00:00");return d>=from&&d<=to;}).sort((a,b)=>a.date>b.date?1:-1);
     if(!entries.length){setGenerated(true);setReportData(null);return;}
-    const refOffset=getRefOffset(),refEntries=getEntries(refOffset),prevEntries=getEntries(weekOffset-1);
-    const{label}=getWeekBounds(weekOffset),isFirst=weekOffset===refOffset;
-    const dv=key=>{const cur=avgArr(entries,key),prev=avgArr(prevEntries,key);if(cur==null||prev==null)return null;return{cur,prev,d:cur-prev,pct:prev?(cur-prev)/prev*100:0};};
+    // Période de référence : même durée avant dateFrom
+    const diffMs=to-from;
+    const refFrom=new Date(from-diffMs-1);const refTo=new Date(from-1);
+    const refEntries=Object.values(allData).filter(e=>{const d=new Date(e.date+"T12:00:00");return d>=refFrom&&d<=refTo;}).sort((a,b)=>a.date>b.date?1:-1);
+    const label=`Du ${new Date(dateFrom+"T12:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})} au ${new Date(dateTo+"T12:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})}`;
+    const isFirst=refEntries.length===0;
+    const dv=key=>{const cur=avgArr(entries,key),prev=avgArr(refEntries,key);if(cur==null||prev==null)return null;return{cur,prev,d:cur-prev,pct:prev?(cur-prev)/prev*100:0};};
     const dvRef=key=>{const cur=avgArr(entries,key),ref=avgArr(refEntries,key);if(cur==null||ref==null)return null;return{cur,ref,d:cur-ref,pct:ref?(cur-ref)/ref*100:0};};
-    setReportData({entries,label,isFirst,prevEntries,refEntries,refOffset,dv,dvRef});
+    setReportData({entries,label,isFirst,prevEntries:refEntries,refEntries,refOffset:0,dv,dvRef});
     setGenerated(true);
   }
 
@@ -387,23 +394,8 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
     setTimeout(()=>{window.print();setTimeout(()=>setPdfMode(false),1000);},300);
   }
 
-  const[customDate,setCustomDate]=useState(todayStr());
-
-  function offsetFromDate(dateStr){
-    const chosen=new Date(dateStr+"T12:00:00"),now=new Date(),nowDay=now.getDay()||7;
-    const thisMon=new Date(now);thisMon.setDate(now.getDate()-nowDay+1);thisMon.setHours(0,0,0,0);
-    const chosenDay=chosen.getDay()||7;
-    const chosenMon=new Date(chosen);chosenMon.setDate(chosen.getDate()-chosenDay+1);chosenMon.setHours(0,0,0,0);
-    return Math.round((chosenMon-thisMon)/(1000*60*60*24*7));
-  }
-
-  function handleDateChange(dateStr){
-    setCustomDate(dateStr);
-    setWeekOffset(offsetFromDate(dateStr));
-    setGenerated(false);
-    setReportData(null);
-  }
-
+  const[dateFrom,setDateFrom]=useState(todayStr());
+  const[dateTo,setDateTo]=useState(todayStr());
   const{label:wLabel}=getWeekBounds(weekOffset);
   const thS={padding:"8px 10px",fontSize:11,fontWeight:600,color:"var(--text2)",borderBottom:"2px solid var(--border)",background:"var(--bg2)",textAlign:"center",whiteSpace:"nowrap"};
   const tdS={padding:"8px 10px",fontSize:12,textAlign:"center",borderBottom:"1px solid var(--border)",color:"var(--text)",whiteSpace:"nowrap"};
@@ -438,9 +430,16 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
       {/* Interface normale */}
       <div className="no-print">
         <div style={{marginBottom:16}}>
-            <label style={{fontSize:12,color:"var(--text2)",display:"block",marginBottom:4}}>Sélectionnez une date dans la semaine souhaitée</label>
-            <input type="date" value={customDate} onChange={e=>handleDateChange(e.target.value)} className="inp" style={{maxWidth:240}} />
-            <p style={{fontSize:12,color:"var(--text2)",marginTop:6,fontWeight:500}}>{wLabel}</p>
+            <div className="row">
+              <div className="col">
+                <label style={{fontSize:12,color:"var(--text2)",display:"block",marginBottom:4}}>Date de début</label>
+                <input type="date" value={dateFrom} onChange={e=>{setDateFrom(e.target.value);setGenerated(false);setReportData(null);}} className="inp" />
+              </div>
+              <div className="col">
+                <label style={{fontSize:12,color:"var(--text2)",display:"block",marginBottom:4}}>Date de fin</label>
+                <input type="date" value={dateTo} onChange={e=>{setDateTo(e.target.value);setGenerated(false);setReportData(null);}} className="inp" />
+              </div>
+            </div>
           </div>
         <div className="card">
           <p className="sec">Rapport hebdomadaire coach</p>
