@@ -387,6 +387,23 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
     setTimeout(()=>{window.print();setTimeout(()=>setPdfMode(false),1000);},300);
   }
 
+  const[customDate,setCustomDate]=useState(todayStr());
+
+  function offsetFromDate(dateStr){
+    const chosen=new Date(dateStr+"T12:00:00"),now=new Date(),nowDay=now.getDay()||7;
+    const thisMon=new Date(now);thisMon.setDate(now.getDate()-nowDay+1);thisMon.setHours(0,0,0,0);
+    const chosenDay=chosen.getDay()||7;
+    const chosenMon=new Date(chosen);chosenMon.setDate(chosen.getDate()-chosenDay+1);chosenMon.setHours(0,0,0,0);
+    return Math.round((chosenMon-thisMon)/(1000*60*60*24*7));
+  }
+
+  function handleDateChange(dateStr){
+    setCustomDate(dateStr);
+    setWeekOffset(offsetFromDate(dateStr));
+    setGenerated(false);
+    setReportData(null);
+  }
+
   const{label:wLabel}=getWeekBounds(weekOffset);
   const thS={padding:"8px 10px",fontSize:11,fontWeight:600,color:"var(--text2)",borderBottom:"2px solid var(--border)",background:"var(--bg2)",textAlign:"center",whiteSpace:"nowrap"};
   const tdS={padding:"8px 10px",fontSize:12,textAlign:"center",borderBottom:"1px solid var(--border)",color:"var(--text)",whiteSpace:"nowrap"};
@@ -420,11 +437,11 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
     <div>
       {/* Interface normale */}
       <div className="no-print">
-        <div className="week-nav">
-          <button className="nav-btn" onClick={()=>{setWeekOffset(w=>w-1);setGenerated(false);setReportData(null);}}>←</button>
-          <span className="week-label">{wLabel}</span>
-          <button className="nav-btn" onClick={()=>{setWeekOffset(w=>Math.min(w+1,0));setGenerated(false);setReportData(null);}}>→</button>
-        </div>
+        <div style={{marginBottom:16}}>
+            <label style={{fontSize:12,color:"var(--text2)",display:"block",marginBottom:4}}>Sélectionnez une date dans la semaine souhaitée</label>
+            <input type="date" value={customDate} onChange={e=>handleDateChange(e.target.value)} className="inp" style={{maxWidth:240}} />
+            <p style={{fontSize:12,color:"var(--text2)",marginTop:6,fontWeight:500}}>{wLabel}</p>
+          </div>
         <div className="card">
           <p className="sec">Rapport hebdomadaire coach</p>
           <button onClick={generate} className="btn btn-blue">Générer le rapport</button>
