@@ -165,11 +165,6 @@ function StatsTab({allData,weekOffset,setWeekOffset}){
     {label:"🩺 Tension",cell:e=>e.systolic?(e.systolic+"/"+(e.diastolic||"—")):"—",avg:()=>{const s=avgArr(entries,"systolic"),d=avgArr(entries,"diastolic");return s!=null?(Math.round(s)+"/"+(d!=null?Math.round(d):"—")):"—";},pct:()=>pctBadge(avgArr(entries,"systolic"),avgArr(refEntries,"systolic"),true)},
     {label:"👣 Pas",cell:e=>e.steps?parseInt(e.steps).toLocaleString("fr-FR"):"—",avg:()=>{const v=avgArr(entries,"steps");return v!=null?Math.round(v).toLocaleString("fr-FR"):"—";},pct:()=>pctBadge(avgArr(entries,"steps"),avgArr(refEntries,"steps"),false)},
     {label:"😴 Sommeil (h)",cell:e=>e.sleepHours||"—",avg:()=>{const v=avgArr(entries,"sleepHours");return v!=null?v.toFixed(1):"—";},pct:()=>pctBadge(avgArr(entries,"sleepHours"),avgArr(refEntries,"sleepHours"),false)},
-    {label:"😴 Score /100",cell:e=>e.sleepScore||"—",avg:()=>{const v=avgArr(entries,"sleepScore");return v!=null?Math.round(v):"—";},pct:()=>pctBadge(avgArr(entries,"sleepScore"),avgArr(refEntries,"sleepScore"),false)},
-    {label:"😴 Profond (min)",cell:e=>e.sleepDeep||"—",avg:()=>{const v=avgArr(entries,"sleepDeep");return v!=null?Math.round(v):"—";},pct:()=>null},
-    {label:"😴 Paradoxal (min)",cell:e=>e.sleepRem||"—",avg:()=>{const v=avgArr(entries,"sleepRem");return v!=null?Math.round(v):"—";},pct:()=>null},
-    {label:"😴 Léger (min)",cell:e=>e.sleepLight||"—",avg:()=>{const v=avgArr(entries,"sleepLight");return v!=null?Math.round(v):"—";},pct:()=>null},
-    {label:"😴 Éveil (min)",cell:e=>e.sleepAwake||"—",avg:()=>{const v=avgArr(entries,"sleepAwake");return v!=null?Math.round(v):"—";},pct:()=>pctBadge(avgArr(entries,"sleepAwake"),avgArr(refEntries,"sleepAwake"),true)},
     {label:"🧠 Humeur /5",cell:e=>e.mood?(e.mood+"/5"):"—",avg:()=>{const v=avgArr(entries,"mood");return v!=null?v.toFixed(1)+"/5":"—";},pct:()=>pctBadge(avgArr(entries,"mood"),avgArr(refEntries,"mood"),false)},
     {label:"🫃 Digestion /5",cell:e=>e.digestion?(e.digestion+"/5"):"—",avg:()=>{const v=avgArr(entries,"digestion");return v!=null?v.toFixed(1)+"/5":"—";},pct:()=>null},
     {label:"💧 5L eau",cell:e=>e.water5L?"✅":"—",avg:()=>entries.filter(e=>e.water5L).length+"/"+entries.length+" j",pct:()=>null},
@@ -415,11 +410,6 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
     {label:"🩺 Tension (mmHg)",cell:e=>e.systolic?(e.systolic+"/"+(e.diastolic||"—")):"—",avg:()=>{const s=avgArr(reportData?.entries||[],"systolic"),d=avgArr(reportData?.entries||[],"diastolic");return s!=null?(Math.round(s)+"/"+(d!=null?Math.round(d):"—")):"—";},dvKey:"systolic",inv:true},
     {label:"👣 Pas",cell:e=>e.steps?parseInt(e.steps).toLocaleString("fr-FR"):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"steps");return v!=null?Math.round(v).toLocaleString("fr-FR"):"—";},dvKey:"steps",inv:false},
     {label:"😴 Sommeil (h)",cell:e=>e.sleepHours||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepHours");return v!=null?v.toFixed(1):"—";},dvKey:"sleepHours",inv:false},
-    {label:"😴 Score sommeil /100",cell:e=>e.sleepScore||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepScore");return v!=null?Math.round(v):"—";},dvKey:"sleepScore",inv:false},
-    {label:"😴 Profond (min)",cell:e=>e.sleepDeep||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepDeep");return v!=null?Math.round(v):"—";},dvKey:null},
-    {label:"😴 Paradoxal (min)",cell:e=>e.sleepRem||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepRem");return v!=null?Math.round(v):"—";},dvKey:null},
-    {label:"😴 Léger (min)",cell:e=>e.sleepLight||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepLight");return v!=null?Math.round(v):"—";},dvKey:null},
-    {label:"😴 Éveil (min)",cell:e=>e.sleepAwake||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepAwake");return v!=null?Math.round(v):"—";},dvKey:null},
     {label:"🧠 Humeur /5",cell:e=>e.mood?(e.mood+"/5 — "+moodTxt(e.mood)):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"mood");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:"mood",inv:false},
     {label:"🫃 Digestion /5",cell:e=>e.digestion?(e.digestion+"/5 — "+digTxt(e.digestion)):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"digestion");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:null},
     {label:"💧 Hydratation 5L",cell:e=>e.water5L?"✅ Oui":"Non",avg:()=>{const e=reportData?.entries||[];return e.filter(x=>x.water5L).length+"/"+e.length+" jours";},dvKey:null},
@@ -523,12 +513,11 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
             {/* En-tête */}
             <div className="pdf-header">
               <div className="pdf-header-left">
-                <h1>REDSKULL TRAINING</h1>
-                <h2>Rapport de suivi hebdomadaire</h2>
+                <h1>RAPPORT DE SUIVI</h1>
+                <h2>Dylan Gonthier</h2>
               </div>
               <div className="pdf-header-right">
-                <strong>Dylan Gonthier</strong>
-                {label}<br/>
+                <strong>{label}</strong><br/>
                 Généré le {new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})}
               </div>
             </div>
@@ -590,7 +579,7 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
 
             {/* Footer */}
             <div className="pdf-footer">
-              <span>Redskull Training — Dylan Gonthier</span>
+              <span>Dylan Gonthier</span>
               <span>{label}</span>
             </div>
           </div>
@@ -632,10 +621,8 @@ function App(){
           </div>
           <div className="card">
             <p className="sec">😴 Sommeil</p>
-            <div className="row"><div className="col"><span className="lbl">Durée (h)</span><input type="number" step="0.5" value={entry.sleepHours} onChange={e=>setF("sleepHours",e.target.value)} placeholder="7.5" className="inp" /></div><div className="col"><span className="lbl">Score /100</span><input type="number" min="0" max="100" value={entry.sleepScore} onChange={e=>setF("sleepScore",e.target.value)} placeholder="0–100" className="inp" /></div></div>
-            <p style={{fontSize:12,color:"var(--text2)",marginBottom:8,fontWeight:500}}>Phases (en minutes)</p>
-            <div className="row"><div className="col"><span className="lbl">Éveil</span><input type="number" value={entry.sleepAwake} onChange={e=>setF("sleepAwake",e.target.value)} placeholder="min" className="inp" /></div><div className="col"><span className="lbl">Paradoxal</span><input type="number" value={entry.sleepRem} onChange={e=>setF("sleepRem",e.target.value)} placeholder="min" className="inp" /></div></div>
-            <div className="row"><div className="col"><span className="lbl">Léger</span><input type="number" value={entry.sleepLight} onChange={e=>setF("sleepLight",e.target.value)} placeholder="min" className="inp" /></div><div className="col"><span className="lbl">Profond</span><input type="number" value={entry.sleepDeep} onChange={e=>setF("sleepDeep",e.target.value)} placeholder="min" className="inp" /></div></div>
+            <span className="lbl">Durée de sommeil (h)</span>
+            <input type="number" step="0.5" value={entry.sleepHours} onChange={e=>setF("sleepHours",e.target.value)} placeholder="ex: 7.5" className="inp" />
           </div>
           <div className="card"><p className="sec">👣 Pas</p><input type="number" value={entry.steps} onChange={e=>setF("steps",e.target.value)} placeholder="ex: 8500" className="inp" /></div>
           <div className="card"><p className="sec">⚖️ Corps</p><div className="row"><div className="col"><span className="lbl">Poids (kg)</span><input type="number" step="0.1" value={entry.weight} onChange={e=>setF("weight",e.target.value)} placeholder="78.5" className="inp" /></div><div className="col"><span className="lbl">Tour taille (cm)</span><input type="number" step="0.5" value={entry.waist} onChange={e=>setF("waist",e.target.value)} placeholder="85" className="inp" /></div></div></div>
