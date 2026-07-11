@@ -35,9 +35,10 @@
     .week-nav{display:flex;align-items:center;gap:12px;margin-bottom:16px}
     .week-label{flex:1;text-align:center;font-size:13px;font-weight:500}
     textarea{resize:vertical;font-family:inherit}
+    .ord-btn{background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:10px;padding:2px 6px;color:var(--text2);line-height:1.2;display:block}
+    .myo-btn{font-size:11px;padding:3px 8px;border-radius:6px;cursor:pointer;white-space:nowrap;font-family:inherit}
     @media print{
-      body{background:#fff!important}
-      .app{max-width:100%;padding:0}
+      body{background:#fff!important}.app{max-width:100%;padding:0}
       .no-print{display:none!important}
       h2,.app>p,.tab-bar{display:none!important}
       a[href]::after{content:none!important}
@@ -45,22 +46,22 @@
     }
     #pdf-content{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;background:#fff;padding:32px 40px;max-width:900px;margin:0 auto}
     .pdf-header{border-bottom:3px solid #1a1a1a;padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end}
-    .pdf-header-left h1{font-size:22px;font-weight:700;letter-spacing:1px}
-    .pdf-header-left h2{font-size:13px;font-weight:400;color:#555;margin-top:4px;letter-spacing:2px;text-transform:uppercase}
+    .pdf-header h1{font-size:22px;font-weight:700;letter-spacing:1px}
+    .pdf-header h2{font-size:13px;font-weight:400;color:#555;margin-top:4px;letter-spacing:2px;text-transform:uppercase}
     .pdf-header-right{text-align:right;font-size:12px;color:#555}
     .pdf-header-right strong{font-size:14px;color:#1a1a1a;display:block}
-    .pdf-section-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#555;border-bottom:1px solid #ccc;padding-bottom:4px;margin:20px 0 12px}
-    .pdf-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px}
+    .pdf-sec{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#555;border-bottom:1px solid #ccc;padding-bottom:4px;margin:20px 0 12px}
+    .pdf-table{width:100%;border-collapse:collapse;font-size:11px}
     .pdf-table th{background:#1a1a1a;color:#fff;padding:6px 8px;text-align:center;font-size:10px;font-weight:600;white-space:nowrap}
-    .pdf-table th.left{text-align:left}
+    .pdf-table th.l{text-align:left}
     .pdf-table td{padding:5px 8px;text-align:center;border-bottom:1px solid #e0e0e0;white-space:nowrap}
-    .pdf-table td.left{text-align:left;font-weight:500;color:#333}
+    .pdf-table td.l{text-align:left;font-weight:500;color:#333}
     .pdf-table tr:nth-child(even) td{background:#f9f9f9}
     .pdf-evol{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
     .pdf-evol-card{border:1px solid #ccc;border-radius:4px;padding:8px 10px}
-    .pdf-evol-card .evol-label{font-size:10px;color:#555;margin-bottom:2px}
-    .pdf-evol-card .evol-val{font-size:14px;font-weight:700}
-    .pdf-evol-card .evol-abs{font-size:10px;color:#555}
+    .evol-label{font-size:10px;color:#555;margin-bottom:2px}
+    .evol-val{font-size:14px;font-weight:700}
+    .evol-abs{font-size:10px;color:#555}
     .pdf-note{border:1px solid #ccc;border-radius:4px;padding:12px 14px;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word;min-height:60px}
     .pdf-footer{margin-top:24px;border-top:1px solid #ccc;padding-top:10px;display:flex;justify-content:space-between;font-size:10px;color:#999}
     .good{color:#1D9E75}.bad{color:#E24B4A}
@@ -69,71 +70,157 @@
 <body>
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
-const{useState,useEffect}=React;
-const SCRIPT_URL="https://script.google.com/macros/s/AKfycbyQzKuNUy_jMLMJn9op9NNdkjqs50dmLfGIf_Unz5DJPYnUkK8Gb8U0DON2X16EHOqH/exec";
-const HEALTH_KEY="cht_health_v1";
-const SEANCES_KEY="cht_seances_v1";
-const moodLabels=["","😞 Très bas","😕 Bas","😐 Neutre","🙂 Bien","😄 Excellent"];
-const digLabels=["","🔴 Mauvaise","🟠 Difficile","🟡 Normale","🟢 Bonne","✅ Excellente"];
-const DAYS_FR=["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+const {useState, useEffect} = React;
 
-function todayStr(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
-function getWeekBounds(offset=0){const now=new Date(),day=now.getDay()||7;const mon=new Date(now);mon.setDate(now.getDate()-day+1+offset*7);mon.setHours(0,0,0,0);const sun=new Date(mon);sun.setDate(mon.getDate()+6);sun.setHours(23,59,59,999);const fmt=d=>d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"});return{mon,sun,label:`Semaine du ${fmt(mon)} au ${fmt(sun)} ${sun.getFullYear()}`};}
-function fmtDate(str){const d=new Date(str+"T12:00:00");return`${DAYS_FR[d.getDay()]} ${d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"})}`;}
-function avgArr(arr,key){const v=arr.map(e=>parseFloat(e[key])).filter(v=>!isNaN(v)&&v>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;}
-function calcTonnage(exo){return(exo.sets||[]).reduce((t,s)=>{const r=parseFloat(s.reps)||0,w=parseFloat(s.weight)||0;return t+r*w;},0);}
-function pctDiff(cur,ref){if(cur==null||ref==null||ref===0)return null;return(cur-ref)/ref*100;}
-function loadLocal(key){try{return JSON.parse(localStorage.getItem(key)||"null");}catch{return null;}}
-function saveLocal(key,val){localStorage.setItem(key,JSON.stringify(val));}
-async function sendToSheet(type,data){await fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({type,data}),headers:{"Content-Type":"application/json"}});}
-const emptyEntry=date=>({date,bpmRest:"",bpmLow:"",bpmHigh:"",sleepHours:"",steps:"",weight:"",waist:"",systolic:"",diastolic:"",mood:0,moodNote:"",digestion:0,water5L:false});
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQzKuNUy_jMLMJn9op9NNdkjqs50dmLfGIf_Unz5DJPYnUkK8Gb8U0DON2X16EHOqH/exec";
+const HEALTH_KEY = "cht_health_v1";
+const SEANCES_KEY = "cht_seances_v1";
+const moodLabels = ["","😞 Très bas","😕 Bas","😐 Neutre","🙂 Bien","😄 Excellent"];
+const digLabels  = ["","🔴 Mauvaise","🟠 Difficile","🟡 Normale","🟢 Bonne","✅ Excellente"];
+const DAYS_FR = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function getWeekBounds(offset) {
+  offset = offset||0;
+  const now = new Date(), day = now.getDay()||7;
+  const mon = new Date(now); mon.setDate(now.getDate()-day+1+offset*7); mon.setHours(0,0,0,0);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+  const fmt = function(d){return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"});};
+  return {mon:mon, sun:sun, label:"Semaine du "+fmt(mon)+" au "+fmt(sun)+" "+sun.getFullYear()};
+}
+function fmtDate(str) {
+  const d = new Date(str+"T12:00:00");
+  return DAYS_FR[d.getDay()]+" "+d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+}
+function avgArr(arr, key) {
+  const v = arr.map(function(e){return parseFloat(e[key]);}).filter(function(v){return !isNaN(v)&&v>0;});
+  return v.length ? v.reduce(function(a,b){return a+b;},0)/v.length : null;
+}
+function calcTonnage(exo) {
+  return (exo.sets||[]).reduce(function(t,s){
+    return t+(parseFloat(s.reps)||0)*(parseFloat(s.weight)||0);
+  },0);
+}
+function pctDiff(cur,ref) {
+  if(cur==null||ref==null||ref===0) return null;
+  return (cur-ref)/ref*100;
+}
+function loadLocal(key) { try{return JSON.parse(localStorage.getItem(key)||"null");}catch(e){return null;} }
+function saveLocal(key,val) { localStorage.setItem(key,JSON.stringify(val)); }
+async function sendToSheet(type,data) {
+  await fetch(SCRIPT_URL,{method:"POST",mode:"no-cors",body:JSON.stringify({type:type,data:data}),headers:{"Content-Type":"application/json"}});
+}
+function emptyEntry(date) {
+  return {date:date,bpmRest:"",bpmLow:"",bpmHigh:"",sleepHours:"",steps:"",weight:"",waist:"",systolic:"",diastolic:"",mood:0,moodNote:"",digestion:0,water5L:false};
+}
 
 // ── SESSION CARD ──
-function SessionCard({h,realIdx,prevH,seances,selectedId,persist}){
-  const totalT=h.perf.reduce((t,e)=>t+calcTonnage(e),0);
-  const prevT=prevH?prevH.perf.reduce((t,e)=>t+calcTonnage(e),0):null;
-  const diffT=prevT!=null?totalT-prevT:null;
-  const diffPct=prevT?(diffT/prevT*100):null;
-  const[editing,setEditing]=useState(false);
-  const[editPerf,setEditPerf]=useState({});
-  const[newExoName,setNewExoName]=useState("");
+function SessionCard(props) {
+  const h = props.h, realIdx = props.realIdx, prevH = props.prevH;
+  const seances = props.seances, selectedId = props.selectedId, persist = props.persist;
 
-  function startEdit(){
-    const p={};h.perf.forEach(e=>{const k=String(e.exoId||e.name);p[k]=e.sets.map(s=>({...s}));});
-    setEditPerf(p);setEditing(true);
+  const totalT = h.perf.reduce(function(t,e){return t+calcTonnage(e);},0);
+  const prevT = prevH ? prevH.perf.reduce(function(t,e){return t+calcTonnage(e);},0) : null;
+  const diffT = prevT!=null ? totalT-prevT : null;
+  const diffPct = prevT ? (diffT/prevT*100) : null;
+
+  const [editing, setEditing] = useState(false);
+  const [editPerf, setEditPerf] = useState({});
+  const [newExoName, setNewExoName] = useState("");
+
+  function startEdit() {
+    const p = {};
+    h.perf.forEach(function(e){
+      const k = String(e.exoId||e.name);
+      p[k] = e.sets.map(function(s){return Object.assign({},s);});
+    });
+    setEditPerf(p); setEditing(true);
   }
-  function saveEdit(){
-    const newPerf=h.perf.map(e=>({...e,sets:(editPerf[String(e.exoId||e.name)]||e.sets)})).filter(e=>e.sets.length>0);
-    const updated=seances.map(s=>s.id===selectedId?{...s,history:s.history.map((sess,si)=>si===realIdx?{...sess,perf:newPerf}:sess)}:s);
-    persist(updated);setEditing(false);
+
+  function saveEdit() {
+    const newPerf = h.perf.map(function(e){
+      return Object.assign({},e,{sets:(editPerf[String(e.exoId||e.name)]||e.sets)});
+    }).filter(function(e){return e.sets.length>0;});
+    const updated = seances.map(function(s){
+      if(s.id!==selectedId) return s;
+      return Object.assign({},s,{history:s.history.map(function(sess,si){
+        return si===realIdx ? Object.assign({},sess,{perf:newPerf}) : sess;
+      })});
+    });
+    persist(updated); setEditing(false);
   }
-  function addExoToSession(){
-    if(!newExoName.trim())return;
-    const exoId=Date.now();
-    const newE={exoId,name:newExoName.trim(),sets:[{reps:"",weight:""}]};
-    const updated=seances.map(s=>s.id===selectedId?{...s,history:s.history.map((sess,si)=>si===realIdx?{...sess,perf:[...sess.perf,newE]}:sess)}:s);
-    persist(updated);setEditPerf(p=>({...p,[exoId]:[{reps:"",weight:""}]}));setNewExoName("");
+
+  function addExoToSession() {
+    if(!newExoName.trim()) return;
+    const exoId = Date.now();
+    const newE = {exoId:exoId, name:newExoName.trim(), sets:[{reps:"",weight:""}]};
+    const updated = seances.map(function(s){
+      if(s.id!==selectedId) return s;
+      return Object.assign({},s,{history:s.history.map(function(sess,si){
+        return si===realIdx ? Object.assign({},sess,{perf:[...sess.perf,newE]}) : sess;
+      })});
+    });
+    persist(updated);
+    setEditPerf(function(p){return Object.assign({},p,{[exoId]:[{reps:"",weight:""}]});});
+    setNewExoName("");
   }
-  function rmExoFromSession(key){
-    const updated=seances.map(s=>s.id===selectedId?{...s,history:s.history.map((sess,si)=>si===realIdx?{...sess,perf:sess.perf.filter(e=>String(e.exoId||e.name)!==key)}:sess)}:s);
-    persist(updated);setEditPerf(p=>{const n={...p};delete n[key];return n;});
+
+  function rmExoFromSession(key) {
+    const updated = seances.map(function(s){
+      if(s.id!==selectedId) return s;
+      return Object.assign({},s,{history:s.history.map(function(sess,si){
+        return si===realIdx ? Object.assign({},sess,{perf:sess.perf.filter(function(e){return String(e.exoId||e.name)!==key;})}) : sess;
+      })});
+    });
+    persist(updated);
+    setEditPerf(function(p){const n=Object.assign({},p);delete n[key];return n;});
   }
-  function deleteSession(){
-    if(!window.confirm("Supprimer cette session ?"))return;
-    const updated=seances.map(s=>s.id===selectedId?{...s,history:s.history.filter((_,si)=>si!==realIdx)}:s);
+
+  function deleteSession() {
+    if(!window.confirm("Supprimer cette session ?")) return;
+    const updated = seances.map(function(s){
+      if(s.id!==selectedId) return s;
+      return Object.assign({},s,{history:s.history.filter(function(_,si){return si!==realIdx;})});
+    });
     persist(updated);
   }
-  function updEditSet(key,i,k,v){setEditPerf(p=>{const sets=[...(p[key]||[])];sets[i]={...sets[i],[k]:v};return{...p,[key]:sets};});}
-  function toggleEditMyorep(key,i){setEditPerf(p=>{const sets=[...(p[key]||[])];sets[i]={...sets[i],myorep:!sets[i].myorep};return{...p,[key]:sets};});}
-  function addEditSet(key){setEditPerf(p=>({...p,[key]:[...(p[key]||[]),{reps:"",weight:""}]}));}
-  function rmEditSet(key,i){setEditPerf(p=>({...p,[key]:(p[key]||[]).filter((_,j)=>j!==i)}));}
 
-  return(
-    <div className="card">
+  function updEditSet(key,i,k,v) {
+    setEditPerf(function(p){
+      const sets = [...(p[key]||[])];
+      sets[i] = Object.assign({},sets[i],{[k]:v});
+      return Object.assign({},p,{[key]:sets});
+    });
+  }
+  function toggleEditMyo(key,i) {
+    setEditPerf(function(p){
+      const sets = [...(p[key]||[])];
+      sets[i] = Object.assign({},sets[i],{myorep:!sets[i].myorep});
+      return Object.assign({},p,{[key]:sets});
+    });
+  }
+  function addEditSet(key) {
+    setEditPerf(function(p){return Object.assign({},p,{[key]:[...(p[key]||[]),{reps:"",weight:""}]});});
+  }
+  function rmEditSet(key,i) {
+    setEditPerf(function(p){return Object.assign({},p,{[key]:(p[key]||[]).filter(function(_,j){return j!==i;})});});
+  }
+
+  const cardStyle = {background:"var(--bg)",borderRadius:12,border:"1px solid var(--border)",padding:"16px 18px",marginBottom:12};
+
+  return (
+    <div style={cardStyle}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
         <div>
           <span style={{fontWeight:600,fontSize:15}}>{fmtDate(h.date)}</span>
-          {diffT!=null&&<span style={{fontSize:12,color:diffT>=0?"var(--green)":"var(--red)",marginLeft:10}}>{diffT>=0?"+":""}{diffT.toLocaleString("fr-FR")} kg ({diffPct>=0?"+":""}{diffPct.toFixed(1)}%) vs session préc.</span>}
+          {diffT!=null && (
+            <span style={{fontSize:12,color:diffT>=0?"var(--green)":"var(--red)",marginLeft:10}}>
+              {diffT>=0?"+":""}{diffT.toLocaleString("fr-FR")} kg ({diffPct>=0?"+":""}{diffPct.toFixed(1)}%) vs session préc.
+            </span>
+          )}
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
           <div style={{textAlign:"right"}}>
@@ -145,64 +232,68 @@ function SessionCard({h,realIdx,prevH,seances,selectedId,persist}){
         </div>
       </div>
 
-      {editing?(
+      {editing ? (
         <div>
-          {h.perf.map(exo=>{
-            const key=String(exo.exoId||exo.name);
-            const sets=editPerf[key]||exo.sets;
-            return(
+          {h.perf.map(function(exo) {
+            const key = String(exo.exoId||exo.name);
+            const sets = editPerf[key]||exo.sets;
+            return (
               <div key={key} style={{marginBottom:14,paddingBottom:14,borderBottom:"1px solid var(--border)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                   <span style={{fontWeight:500,fontSize:13}}>{exo.name}</span>
-                  <button onClick={()=>rmExoFromSession(key)} style={{fontSize:11,padding:"2px 8px",borderRadius:6,border:"1px solid var(--red)",background:"transparent",cursor:"pointer",color:"var(--red)"}}>Supprimer</button>
+                  <button onClick={function(){rmExoFromSession(key);}} style={{fontSize:11,padding:"2px 8px",borderRadius:6,border:"1px solid var(--red)",background:"transparent",cursor:"pointer",color:"var(--red)"}}>Supprimer</button>
                 </div>
-                {sets.map((st,j)=>(
-                  <div key={j} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center",flexWrap:"wrap"}}>
-                    <span style={{fontSize:12,color:"var(--text2)",width:52,flexShrink:0}}>Série {j+1}</span>
-                    {st.myorep?(
-                      <input value={st.reps||""} onChange={e=>updEditSet(key,j,"reps",e.target.value)} placeholder="ex: 11+3+3+3" className="inp" style={{flex:1,minWidth:120}} />
-                    ):(
-                      <input type="number" value={st.reps||""} onChange={e=>updEditSet(key,j,"reps",e.target.value)} placeholder="reps" className="inp" style={{width:70,flex:"none"}} />
-                    )}
-                    <span style={{fontSize:12,color:"var(--text2)"}}>×</span>
-                    <input type="number" value={st.weight||""} onChange={e=>updEditSet(key,j,"weight",e.target.value)} placeholder="kg" className="inp" style={{width:70,flex:"none"}} />
-                    <span style={{fontSize:12,color:"var(--text2)"}}>kg</span>
-                    <button onClick={()=>toggleEditMyorep(key,j)} style={{fontSize:11,padding:"3px 8px",borderRadius:6,border:`1px solid ${st.myorep?"var(--blue)":"var(--border)"}`,background:st.myorep?"#e8f0fb":"transparent",color:st.myorep?"var(--blue)":"var(--text2)",cursor:"pointer",whiteSpace:"nowrap"}}>Myoreps</button>
-                    {sets.length>1&&<button onClick={()=>rmEditSet(key,j)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>}
-                  </div>
-                ))}
-                <button onClick={()=>addEditSet(key)} style={{fontSize:11,color:"var(--text2)",background:"none",border:"1px solid var(--border)",borderRadius:6,padding:"2px 8px",cursor:"pointer",marginTop:4}}>+ Série</button>
+                {sets.map(function(st,j) {
+                  return (
+                    <div key={j} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center",flexWrap:"wrap"}}>
+                      <span style={{fontSize:12,color:"var(--text2)",width:52,flexShrink:0}}>Série {j+1}</span>
+                      {st.myorep ? (
+                        <input value={st.reps||""} onChange={function(e){updEditSet(key,j,"reps",e.target.value);}} placeholder="ex: 11+3+3+3" className="inp" style={{flex:1,minWidth:120}} />
+                      ) : (
+                        <input type="number" value={st.reps||""} onChange={function(e){updEditSet(key,j,"reps",e.target.value);}} placeholder="reps" className="inp" style={{width:70,flex:"none"}} />
+                      )}
+                      <span style={{fontSize:12,color:"var(--text2)"}}>×</span>
+                      <input type="number" value={st.weight||""} onChange={function(e){updEditSet(key,j,"weight",e.target.value);}} placeholder="kg" className="inp" style={{width:70,flex:"none"}} />
+                      <span style={{fontSize:12,color:"var(--text2)"}}>kg</span>
+                      <button onClick={function(){toggleEditMyo(key,j);}} className="myo-btn" style={{border:"1px solid "+(st.myorep?"var(--blue)":"var(--border)"),background:st.myorep?"#e8f0fb":"transparent",color:st.myorep?"var(--blue)":"var(--text2)"}}>Myoreps</button>
+                      {sets.length>1 && <button onClick={function(){rmEditSet(key,j);}} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>}
+                    </div>
+                  );
+                })}
+                <button onClick={function(){addEditSet(key);}} style={{fontSize:11,color:"var(--text2)",background:"none",border:"1px solid var(--border)",borderRadius:6,padding:"2px 8px",cursor:"pointer",marginTop:4}}>+ Série</button>
               </div>
             );
           })}
           <div style={{display:"flex",gap:8,marginBottom:10}}>
-            <input value={newExoName} onChange={e=>setNewExoName(e.target.value)} placeholder="Ajouter un exercice oublié..." className="inp" style={{flex:1}} onKeyDown={e=>e.key==="Enter"&&addExoToSession()} />
+            <input value={newExoName} onChange={function(e){setNewExoName(e.target.value);}} placeholder="Ajouter un exercice oublié..." className="inp" style={{flex:1}} onKeyDown={function(e){if(e.key==="Enter")addExoToSession();}} />
             <button onClick={addExoToSession} className="btn btn-blue" style={{width:"auto",padding:"6px 12px",marginBottom:0,fontSize:13}}>+ Exo</button>
           </div>
           <div style={{display:"flex",gap:8}}>
             <button onClick={saveEdit} className="btn btn-green" style={{marginBottom:0}}>✓ Sauvegarder</button>
-            <button onClick={()=>setEditing(false)} className="btn" style={{marginBottom:0,background:"#ccc",color:"var(--text)"}}>Annuler</button>
+            <button onClick={function(){setEditing(false);}} className="btn" style={{marginBottom:0,background:"#ccc",color:"var(--text)"}}>Annuler</button>
           </div>
         </div>
-      ):(
+      ) : (
         <div>
-          {h.perf.map((e,ei)=>{
-            const t=calcTonnage(e);
-            const prevPerf=prevH?.perf.find(p=>String(p.exoId||p.name)===String(e.exoId||e.name));
-            const prevExoT=prevPerf?calcTonnage(prevPerf):null;
-            const dExo=prevExoT!=null?t-prevExoT:null;
-            const dExoPct=prevExoT?dExo/prevExoT*100:null;
-            return(
+          {h.perf.map(function(e,ei) {
+            const t = calcTonnage(e);
+            const prevPerf = prevH ? prevH.perf.find(function(p){return String(p.exoId||p.name)===String(e.exoId||e.name);}) : null;
+            const prevExoT = prevPerf ? calcTonnage(prevPerf) : null;
+            const dExo = prevExoT!=null ? t-prevExoT : null;
+            const dExoPct = prevExoT ? dExo/prevExoT*100 : null;
+            return (
               <div key={ei} style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid var(--border)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                   <span style={{fontSize:13,fontWeight:500}}>{e.name}</span>
                   <div>
                     <span style={{fontSize:13,fontWeight:500,color:"var(--blue)"}}>{t.toLocaleString("fr-FR")} kg</span>
-                    {dExo!=null&&<span style={{fontSize:11,color:dExo>=0?"var(--green)":"var(--red)",marginLeft:8}}>{dExo>=0?"+":""}{dExo.toLocaleString("fr-FR")} kg ({dExoPct>=0?"+":""}{dExoPct.toFixed(1)}%)</span>}
+                    {dExo!=null && <span style={{fontSize:11,color:dExo>=0?"var(--green)":"var(--red)",marginLeft:8}}>{dExo>=0?"+":""}{dExo.toLocaleString("fr-FR")} kg ({dExoPct>=0?"+":""}{dExoPct.toFixed(1)}%)</span>}
                   </div>
                 </div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                  {e.sets.map((st,si)=><span key={si} style={{fontSize:12,padding:"3px 8px",borderRadius:6,border:"1px solid var(--border)",color:"var(--text2)"}}>S{si+1}: {st.reps}×{st.weight}kg</span>)}
+                  {e.sets.map(function(st,si){
+                    return <span key={si} style={{fontSize:12,padding:"3px 8px",borderRadius:6,border:"1px solid var(--border)",color:"var(--text2)"}}>S{si+1}: {st.reps}×{st.weight}kg</span>;
+                  })}
                 </div>
               </div>
             );
@@ -214,252 +305,333 @@ function SessionCard({h,realIdx,prevH,seances,selectedId,persist}){
 }
 
 // ── STATS ──
-function StatsTab({allData,weekOffset,setWeekOffset}){
-  function getEntries(offset=0){if(!allData)return[];const{mon,sun}=getWeekBounds(offset);return Object.values(allData).filter(e=>{const d=new Date(e.date+"T12:00:00");return d>=mon&&d<=sun;}).sort((a,b)=>a.date>b.date?1:-1);}
-  function getRefOffset(){if(!allData||!Object.keys(allData).length)return 0;const dates=Object.keys(allData).sort();return-Math.floor((new Date()-new Date(dates[0]+"T12:00:00"))/(1000*60*60*24*7));}
-  const entries=getEntries(weekOffset),refOffset=getRefOffset(),refEntries=getEntries(refOffset);
-  const{label}=getWeekBounds(weekOffset);
-  const dayCol=e=>new Date(e.date+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit"});
-  function pctBadge(cur,ref,inv){if(cur==null||ref==null||ref===0||weekOffset===refOffset)return null;const p=pctDiff(cur,ref),good=inv?p<=0:p>=0;return<div style={{fontSize:10,color:good?"var(--green)":"var(--red)",marginTop:2}}>{p>=0?"+":""}{p.toFixed(1)}%</div>;}
-  const rows=[
-    {label:"⚖️ Poids (kg)",cell:e=>e.weight||"—",avg:()=>{const v=avgArr(entries,"weight");return v!=null?v.toFixed(1):"—";},pct:()=>pctBadge(avgArr(entries,"weight"),avgArr(refEntries,"weight"),false)},
-    {label:"📏 Tour (cm)",cell:e=>e.waist||"—",avg:()=>{const v=avgArr(entries,"waist");return v!=null?v.toFixed(1):"—";},pct:()=>pctBadge(avgArr(entries,"waist"),avgArr(refEntries,"waist"),true)},
-    {label:"❤️ BPM repos",cell:e=>e.bpmRest||"—",avg:()=>{const v=avgArr(entries,"bpmRest");return v!=null?Math.round(v):"—";},pct:()=>pctBadge(avgArr(entries,"bpmRest"),avgArr(refEntries,"bpmRest"),true)},
-    {label:"❤️ BPM min",cell:e=>e.bpmLow||"—",avg:()=>{const v=avgArr(entries,"bpmLow");return v!=null?Math.round(v):"—";},pct:()=>null},
-    {label:"❤️ BPM max",cell:e=>e.bpmHigh||"—",avg:()=>{const v=avgArr(entries,"bpmHigh");return v!=null?Math.round(v):"—";},pct:()=>null},
-    {label:"🩺 Tension",cell:e=>e.systolic?(e.systolic+"/"+(e.diastolic||"—")):"—",avg:()=>{const s=avgArr(entries,"systolic"),d=avgArr(entries,"diastolic");return s!=null?(Math.round(s)+"/"+(d!=null?Math.round(d):"—")):"—";},pct:()=>pctBadge(avgArr(entries,"systolic"),avgArr(refEntries,"systolic"),true)},
-    {label:"👣 Pas",cell:e=>e.steps?parseInt(e.steps).toLocaleString("fr-FR"):"—",avg:()=>{const v=avgArr(entries,"steps");return v!=null?Math.round(v).toLocaleString("fr-FR"):"—";},pct:()=>pctBadge(avgArr(entries,"steps"),avgArr(refEntries,"steps"),false)},
-    {label:"😴 Sommeil (h)",cell:e=>e.sleepHours||"—",avg:()=>{const v=avgArr(entries,"sleepHours");return v!=null?v.toFixed(1):"—";},pct:()=>pctBadge(avgArr(entries,"sleepHours"),avgArr(refEntries,"sleepHours"),false)},
-    {label:"🧠 Humeur /5",cell:e=>e.mood?(e.mood+"/5"):"—",avg:()=>{const v=avgArr(entries,"mood");return v!=null?v.toFixed(1)+"/5":"—";},pct:()=>pctBadge(avgArr(entries,"mood"),avgArr(refEntries,"mood"),false)},
-    {label:"🫃 Digestion /5",cell:e=>e.digestion?(e.digestion+"/5"):"—",avg:()=>{const v=avgArr(entries,"digestion");return v!=null?v.toFixed(1)+"/5":"—";},pct:()=>null},
-    {label:"💧 5L eau",cell:e=>e.water5L?"✅":"—",avg:()=>entries.filter(e=>e.water5L).length+"/"+entries.length+" j",pct:()=>null},
+function StatsTab(props) {
+  const allData = props.allData, weekOffset = props.weekOffset, setWeekOffset = props.setWeekOffset;
+
+  function getRefOffset() {
+    if(!allData||!Object.keys(allData).length) return 0;
+    const dates = Object.keys(allData).sort();
+    return -Math.floor((new Date()-new Date(dates[0]+"T12:00:00"))/(1000*60*60*24*7));
+  }
+  function getEntries(offset) {
+    if(!allData) return [];
+    const b = getWeekBounds(offset);
+    return Object.values(allData).filter(function(e){const d=new Date(e.date+"T12:00:00");return d>=b.mon&&d<=b.sun;}).sort(function(a,b){return a.date>b.date?1:-1;});
+  }
+
+  const entries = getEntries(weekOffset);
+  const refOffset = getRefOffset();
+  const refEntries = getEntries(refOffset);
+  const wb = getWeekBounds(weekOffset);
+
+  function pctBadge(cur,ref,inv) {
+    if(cur==null||ref==null||ref===0||weekOffset===refOffset) return null;
+    const p = pctDiff(cur,ref), good = inv?p<=0:p>=0;
+    return <div style={{fontSize:10,color:good?"var(--green)":"var(--red)",marginTop:2}}>{p>=0?"+":""}{p.toFixed(1)}%</div>;
+  }
+
+  const rows = [
+    {label:"⚖️ Poids (kg)",      cell:function(e){return e.weight||"—";},    avg:function(){const v=avgArr(entries,"weight");   return v!=null?v.toFixed(1):"—";},   pct:function(){return pctBadge(avgArr(entries,"weight"),   avgArr(refEntries,"weight"),   false);}},
+    {label:"📏 Tour (cm)",        cell:function(e){return e.waist||"—";},     avg:function(){const v=avgArr(entries,"waist");    return v!=null?v.toFixed(1):"—";},   pct:function(){return pctBadge(avgArr(entries,"waist"),    avgArr(refEntries,"waist"),    true);}},
+    {label:"❤️ BPM repos",        cell:function(e){return e.bpmRest||"—";},   avg:function(){const v=avgArr(entries,"bpmRest");  return v!=null?Math.round(v):"—";}, pct:function(){return pctBadge(avgArr(entries,"bpmRest"),  avgArr(refEntries,"bpmRest"),  true);}},
+    {label:"❤️ BPM min",          cell:function(e){return e.bpmLow||"—";},    avg:function(){const v=avgArr(entries,"bpmLow");   return v!=null?Math.round(v):"—";}, pct:function(){return null;}},
+    {label:"❤️ BPM max",          cell:function(e){return e.bpmHigh||"—";},   avg:function(){const v=avgArr(entries,"bpmHigh");  return v!=null?Math.round(v):"—";}, pct:function(){return null;}},
+    {label:"🩺 Tension",          cell:function(e){return e.systolic?(e.systolic+"/"+(e.diastolic||"—")):"—";}, avg:function(){const s=avgArr(entries,"systolic"),d=avgArr(entries,"diastolic");return s!=null?(Math.round(s)+"/"+(d!=null?Math.round(d):"—")):"—";}, pct:function(){return pctBadge(avgArr(entries,"systolic"),avgArr(refEntries,"systolic"),true);}},
+    {label:"👣 Pas",              cell:function(e){return e.steps?parseInt(e.steps).toLocaleString("fr-FR"):"—";}, avg:function(){const v=avgArr(entries,"steps");return v!=null?Math.round(v).toLocaleString("fr-FR"):"—";}, pct:function(){return pctBadge(avgArr(entries,"steps"),avgArr(refEntries,"steps"),false);}},
+    {label:"😴 Sommeil (h)",      cell:function(e){return e.sleepHours||"—";},avg:function(){const v=avgArr(entries,"sleepHours");return v!=null?v.toFixed(1):"—";}, pct:function(){return pctBadge(avgArr(entries,"sleepHours"),avgArr(refEntries,"sleepHours"),false);}},
+    {label:"🧠 Humeur /5",        cell:function(e){return e.mood?(e.mood+"/5"):"—";}, avg:function(){const v=avgArr(entries,"mood");return v!=null?v.toFixed(1)+"/5":"—";}, pct:function(){return pctBadge(avgArr(entries,"mood"),avgArr(refEntries,"mood"),false);}},
+    {label:"🫃 Digestion /5",     cell:function(e){return e.digestion?(e.digestion+"/5"):"—";}, avg:function(){const v=avgArr(entries,"digestion");return v!=null?v.toFixed(1)+"/5":"—";}, pct:function(){return null;}},
+    {label:"💧 5L eau",           cell:function(e){return e.water5L?"✅":"—";}, avg:function(){return entries.filter(function(e){return e.water5L;}).length+"/"+entries.length+" j";}, pct:function(){return null;}},
   ];
-  return(
+
+  function dayCol(e){return new Date(e.date+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit"});}
+
+  return (
     <div>
       <div className="week-nav">
-        <button className="nav-btn" onClick={()=>setWeekOffset(w=>w-1)}>←</button>
-        <span className="week-label">{label}</span>
-        <button className="nav-btn" onClick={()=>setWeekOffset(w=>Math.min(w+1,0))}>→</button>
+        <button className="nav-btn" onClick={function(){setWeekOffset(function(w){return w-1;});}}>←</button>
+        <span className="week-label">{wb.label}</span>
+        <button className="nav-btn" onClick={function(){setWeekOffset(function(w){return Math.min(w+1,0);});}}>→</button>
       </div>
-      {entries.length===0?<div className="card" style={{textAlign:"center",padding:"2rem"}}><p style={{color:"var(--text2)"}}>Aucune donnée pour cette semaine.</p></div>:(
+      {entries.length===0 ? (
+        <div className="card" style={{textAlign:"center",padding:"2rem"}}><p style={{color:"var(--text2)"}}>Aucune donnée pour cette semaine.</p></div>
+      ) : (
         <div className="overflow">
           <table>
             <thead><tr>
               <th style={{textAlign:"left",minWidth:160,background:"var(--bg2)"}}>Métrique</th>
-              {entries.map((e,i)=><th key={i}>{dayCol(e)}</th>)}
+              {entries.map(function(e,i){return <th key={i}>{dayCol(e)}</th>;})}
               <th className="avg-cell">📊 Moy.</th>
             </tr></thead>
             <tbody>
-              {rows.map((row,ri)=>(
+              {rows.map(function(row,ri){return (
                 <tr key={ri} style={{background:ri%2===0?"transparent":"var(--bg2)"}}>
                   <td style={{textAlign:"left",fontWeight:500,fontSize:12,color:"var(--text2)",background:ri%2===0?"var(--bg2)":"var(--bg)"}}>{row.label}</td>
-                  {entries.map((e,i)=><td key={i}>{row.cell(e)}</td>)}
+                  {entries.map(function(e,i){return <td key={i}>{row.cell(e)}</td>;})}
                   <td className="avg-cell">{row.avg()}{row.pct()}</td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
         </div>
       )}
-      {weekOffset!==getRefOffset()&&entries.length>0&&<p style={{fontSize:11,color:"var(--text2)",textAlign:"right",marginTop:8}}>% = évolution vs semaine de référence</p>}
     </div>
   );
-  function getRefOffset(){if(!allData||!Object.keys(allData).length)return 0;const dates=Object.keys(allData).sort();return-Math.floor((new Date()-new Date(dates[0]+"T12:00:00"))/(1000*60*60*24*7));}
 }
 
 // ── SÉANCES ──
-function SeancesTab(){
-  const[seances,setSeances]=useState([]);
-  const[selectedId,setSelectedId]=useState(null);
-  const[view,setView]=useState("log");
-  const[newName,setNewName]=useState("");
-  const[newExo,setNewExo]=useState("");
-  const[perf,setPerf]=useState({});
-  const[saved,setSaved]=useState(false);
+function SeancesTab() {
+  const [seances, setSeances] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [view, setView] = useState("log");
+  const [newName, setNewName] = useState("");
+  const [newExo, setNewExo] = useState("");
+  const [perf, setPerf] = useState({});
+  const [saved, setSaved] = useState(false);
 
-  useEffect(()=>{const d=loadLocal(SEANCES_KEY)||[];setSeances(d);if(d.length){setSelectedId(d[0].id);initPerf(d[0]);}},[]);
-  function initPerf(s){const p={};(s.exos||[]).forEach(e=>{p[e.id]=[{reps:"",weight:""}];});setPerf(p);}
-  function persist(u){setSeances(u);saveLocal(SEANCES_KEY,u);setSaved(true);setTimeout(()=>setSaved(false),2000);}
-  function addSeance(){if(!newName.trim())return;const s={id:Date.now(),name:newName.trim(),exos:[],history:[]};const u=[...seances,s];persist(u);setSelectedId(s.id);setPerf({});setNewName("");}
-  function rmSeance(id){const u=seances.filter(s=>s.id!==id);persist(u);if(u.length){setSelectedId(u[0].id);initPerf(u[0]);}else setSelectedId(null);}
-  function addExo(){if(!newExo.trim())return;const id=Date.now();const u=seances.map(s=>s.id===selectedId?{...s,exos:[...s.exos,{id,name:newExo.trim()}]}:s);persist(u);setPerf(p=>({...p,[id]:[{reps:"",weight:""}]}));setNewExo("");}
-  function rmExo(exoId){const u=seances.map(s=>s.id===selectedId?{...s,exos:s.exos.filter(e=>e.id!==exoId)}:s);persist(u);}
+  useEffect(function(){
+    const d = loadLocal(SEANCES_KEY)||[];
+    setSeances(d);
+    if(d.length){setSelectedId(d[0].id);initPerf(d[0]);}
+  },[]);
+
+  function initPerf(s){
+    const p={};
+    (s.exos||[]).forEach(function(e){p[e.id]=[{reps:"",weight:""}];});
+    setPerf(p);
+  }
+  function persist(u){setSeances(u);saveLocal(SEANCES_KEY,u);setSaved(true);setTimeout(function(){setSaved(false);},2000);}
+
+  function addSeance(){
+    if(!newName.trim()) return;
+    const s={id:Date.now(),name:newName.trim(),exos:[],history:[]};
+    const u=[...seances,s];persist(u);setSelectedId(s.id);setPerf({});setNewName("");
+  }
+  function rmSeance(id){
+    const u=seances.filter(function(s){return s.id!==id;});
+    persist(u);
+    if(u.length){setSelectedId(u[0].id);initPerf(u[0]);}else setSelectedId(null);
+  }
+  function addExo(){
+    if(!newExo.trim()) return;
+    const id=Date.now();
+    const u=seances.map(function(s){return s.id===selectedId?Object.assign({},s,{exos:[...s.exos,{id:id,name:newExo.trim()}]}):s;});
+    persist(u);setPerf(function(p){return Object.assign({},p,{[id]:[{reps:"",weight:""}]});});setNewExo("");
+  }
+  function rmExo(exoId){
+    const u=seances.map(function(s){return s.id===selectedId?Object.assign({},s,{exos:s.exos.filter(function(e){return e.id!==exoId;})}):s;});
+    persist(u);
+  }
   function moveExo(id,dir){
-    const u=seances.map(s=>{
-      if(s.id!==selectedId)return s;
-      const exos=[...s.exos],idx=exos.findIndex(e=>e.id===id);
-      if(idx<0)return s;
-      const to=idx+dir;if(to<0||to>=exos.length)return s;
-      [exos[idx],exos[to]]=[exos[to],exos[idx]];
-      return{...s,exos};
+    const u=seances.map(function(s){
+      if(s.id!==selectedId) return s;
+      const exos=[...s.exos];
+      const idx=exos.findIndex(function(e){return e.id===id;});
+      if(idx<0) return s;
+      const to=idx+dir;
+      if(to<0||to>=exos.length) return s;
+      const tmp=exos[idx];exos[idx]=exos[to];exos[to]=tmp;
+      return Object.assign({},s,{exos:exos});
     });
     persist(u);
   }
-  function toggleMyorep(exoId,i){setPerf(p=>{const sets=[...(p[exoId]||[])];sets[i]={...sets[i],myorep:!sets[i].myorep};return{...p,[exoId]:sets};});}
-  function addSet(exoId){setPerf(p=>({...p,[exoId]:[...(p[exoId]||[]),{reps:"",weight:""}]}));}
-  function rmSet(exoId,i){setPerf(p=>({...p,[exoId]:(p[exoId]||[]).filter((_,j)=>j!==i)}));}
+  function updSet(exoId,i,k,v){
+    setPerf(function(p){const sets=[...(p[exoId]||[])];sets[i]=Object.assign({},sets[i],{[k]:v});return Object.assign({},p,{[exoId]:sets});});
+  }
+  function toggleMyo(exoId,i){
+    setPerf(function(p){const sets=[...(p[exoId]||[])];sets[i]=Object.assign({},sets[i],{myorep:!sets[i].myorep});return Object.assign({},p,{[exoId]:sets});});
+  }
+  function addSet(exoId){
+    setPerf(function(p){return Object.assign({},p,{[exoId]:[...(p[exoId]||[]),{reps:"",weight:""}]});});
+  }
+  function rmSet(exoId,i){
+    setPerf(function(p){return Object.assign({},p,{[exoId]:(p[exoId]||[]).filter(function(_,j){return j!==i;})});});
+  }
   function logSession(){
-    const cur=seances.find(s=>s.id===selectedId);if(!cur)return;
-    const perfData=cur.exos.map(e=>({exoId:e.id,name:e.name,sets:(perf[e.id]||[]).filter(s=>s.reps&&s.weight)})).filter(e=>e.sets.length>0);
-    if(!perfData.length)return;
-    const u=seances.map(s=>s.id===selectedId?{...s,history:[...(s.history||[]),{date:todayStr(),perf:perfData}]}:s);
+    const cur=seances.find(function(s){return s.id===selectedId;});
+    if(!cur) return;
+    const perfData=cur.exos.map(function(e){
+      return {exoId:e.id,name:e.name,sets:(perf[e.id]||[]).filter(function(s){return s.reps&&s.weight;})};
+    }).filter(function(e){return e.sets.length>0;});
+    if(!perfData.length) return;
+    const u=seances.map(function(s){return s.id===selectedId?Object.assign({},s,{history:[...(s.history||[]),{date:todayStr(),perf:perfData}]}):s;});
     persist(u);initPerf(cur);
   }
-  const current=seances.find(s=>s.id===selectedId);
-  return(
+
+  const current = seances.find(function(s){return s.id===selectedId;});
+
+  return (
     <div>
       <div className="card">
         <p className="sec">💪 Mes séances</p>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
-          {seances.map((s,i)=>(
+          {seances.map(function(s,i){return (
             <div key={s.id} style={{display:"flex",alignItems:"center",gap:2}}>
-              <button onClick={()=>{setSelectedId(s.id);initPerf(s);setView("log");}} className={`tab${selectedId===s.id?" active":""}`}>Séance {i+1} — {s.name}</button>
-              <button onClick={()=>rmSeance(s.id)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:15}}>×</button>
+              <button onClick={function(){setSelectedId(s.id);initPerf(s);setView("log");}} className={"tab"+(selectedId===s.id?" active":"")}>Séance {i+1} — {s.name}</button>
+              <button onClick={function(){rmSeance(s.id);}} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:15}}>×</button>
             </div>
-          ))}
+          );})}
         </div>
         <div style={{display:"flex",gap:8}}>
-          <input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="Nom (ex: Push, Pull, Legs...)" className="inp" style={{flex:1}} onKeyDown={e=>e.key==="Enter"&&addSeance()} />
+          <input value={newName} onChange={function(e){setNewName(e.target.value);}} placeholder="Nom (ex: Push, Pull, Legs...)" className="inp" style={{flex:1}} onKeyDown={function(e){if(e.key==="Enter")addSeance();}} />
           <button onClick={addSeance} className="btn btn-blue" style={{width:"auto",padding:"8px 14px",marginBottom:0}}>+ Séance</button>
         </div>
       </div>
-      {current&&(
-        <>
+
+      {current && (
+        <div>
           <div style={{display:"flex",gap:8,marginBottom:12}}>
-            {[["log","📝 Saisir les perfs"],["history","📈 Historique & tonnage"]].map(([k,v])=>(
-              <button key={k} onClick={()=>setView(k)} className={`tab${view===k?" active":""}`}>{v}</button>
-            ))}
+            {[["log","📝 Saisir les perfs"],["history","📈 Historique & tonnage"]].map(function(item){return (
+              <button key={item[0]} onClick={function(){setView(item[0]);}} className={"tab"+(view===item[0]?" active":"")}>{item[1]}</button>
+            );})}
           </div>
-          {view==="log"&&(
-            <>
+
+          {view==="log" && (
+            <div>
               <div className="card">
                 <p className="sec">Ajouter un exercice</p>
                 <div style={{display:"flex",gap:8}}>
-                  <input value={newExo} onChange={e=>setNewExo(e.target.value)} placeholder="ex: Développé couché" className="inp" style={{flex:1}} onKeyDown={e=>e.key==="Enter"&&addExo()} />
+                  <input value={newExo} onChange={function(e){setNewExo(e.target.value);}} placeholder="ex: Développé couché" className="inp" style={{flex:1}} onKeyDown={function(e){if(e.key==="Enter")addExo();}} />
                   <button onClick={addExo} className="btn btn-blue" style={{width:"auto",padding:"8px 14px",marginBottom:0}}>+ Exo</button>
                 </div>
               </div>
-              {current.exos.length>0&&(
+              {current.exos.length>0 && (
                 <div className="card">
                   <p className="sec">Perfs du jour — {todayStr()}</p>
-                  {current.exos.map((exo,i)=>{
-                    const sets=perf[exo.id]||[{reps:"",weight:""}];
-                    const t=sets.reduce((tt,s)=>{const r=parseFloat(s.reps)||0,w=parseFloat(s.weight)||0;return tt+r*w;},0);
-                    return(
+                  {current.exos.map(function(exo,i){
+                    const sets = perf[exo.id]||[{reps:"",weight:""}];
+                    const t = sets.reduce(function(tt,s){return tt+(parseFloat(s.reps)||0)*(parseFloat(s.weight)||0);},0);
+                    return (
                       <div key={exo.id} style={{marginBottom:16,paddingBottom:16,borderBottom:"1px solid var(--border)"}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                           <div style={{display:"flex",gap:6,alignItems:"center"}}>
                             <div style={{display:"flex",flexDirection:"column",gap:2}}>
-                              <button onClick={()=>moveExo(exo.id,-1)} style={{background:"none",border:"1px solid var(--border)",borderRadius:4,cursor:"pointer",fontSize:10,padding:"2px 6px",color:"var(--text2)"}}>▲</button>
-                              <button onClick={()=>moveExo(exo.id,1)} style={{background:"none",border:"1px solid var(--border)",borderRadius:4,cursor:"pointer",fontSize:10,padding:"2px 6px",color:"var(--text2)"}}>▼</button>
+                              <button onClick={function(){moveExo(exo.id,-1);}} className="ord-btn">▲</button>
+                              <button onClick={function(){moveExo(exo.id,1);}} className="ord-btn">▼</button>
                             </div>
                             <span style={{fontWeight:500}}>{i+1}. {exo.name}</span>
                           </div>
                           <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                            {t>0&&<span style={{fontSize:12,color:"var(--blue)",fontWeight:500}}>{t} kg</span>}
-                            <button onClick={()=>rmExo(exo.id)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>
+                            {t>0 && <span style={{fontSize:12,color:"var(--blue)",fontWeight:500}}>{t} kg</span>}
+                            <button onClick={function(){rmExo(exo.id);}} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>
                           </div>
                         </div>
-                          <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                            {t>0&&<span style={{fontSize:12,color:"var(--blue)",fontWeight:500}}>{t} kg</span>}
-                            <button onClick={()=>rmExo(exo.id)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>
-                          </div>
-                        </div>
-                        {sets.map((st,j)=>(
+                        {sets.map(function(st,j){return (
                           <div key={j} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center",flexWrap:"wrap"}}>
                             <span style={{fontSize:12,color:"var(--text2)",width:52,flexShrink:0}}>Série {j+1}</span>
-                            {st.myorep?(
-                              <input value={st.reps||""} onChange={e=>updSet(exo.id,j,"reps",e.target.value)} placeholder="ex: 11+3+3+3" className="inp" style={{flex:1,minWidth:120}} />
-                            ):(
-                              <input type="number" value={st.reps||""} onChange={e=>updSet(exo.id,j,"reps",e.target.value)} placeholder="reps" className="inp" style={{width:70,flex:"none"}} />
+                            {st.myorep ? (
+                              <input value={st.reps||""} onChange={function(e){updSet(exo.id,j,"reps",e.target.value);}} placeholder="ex: 11+3+3+3" className="inp" style={{flex:1,minWidth:120}} />
+                            ) : (
+                              <input type="number" value={st.reps||""} onChange={function(e){updSet(exo.id,j,"reps",e.target.value);}} placeholder="reps" className="inp" style={{width:70,flex:"none"}} />
                             )}
                             <span style={{fontSize:12,color:"var(--text2)"}}>×</span>
-                            <input type="number" value={st.weight||""} onChange={e=>updSet(exo.id,j,"weight",e.target.value)} placeholder="kg" className="inp" style={{width:70,flex:"none"}} />
+                            <input type="number" value={st.weight||""} onChange={function(e){updSet(exo.id,j,"weight",e.target.value);}} placeholder="kg" className="inp" style={{width:70,flex:"none"}} />
                             <span style={{fontSize:12,color:"var(--text2)"}}>kg</span>
-                            <button onClick={()=>toggleMyorep(exo.id,j)} style={{fontSize:11,padding:"3px 8px",borderRadius:6,border:`1px solid ${st.myorep?"var(--blue)":"var(--border)"}`,background:st.myorep?"#e8f0fb":"transparent",color:st.myorep?"var(--blue)":"var(--text2)",cursor:"pointer",whiteSpace:"nowrap"}}>Myoreps</button>
-                            {sets.length>1&&<button onClick={()=>rmSet(exo.id,j)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>}
+                            <button onClick={function(){toggleMyo(exo.id,j);}} className="myo-btn" style={{border:"1px solid "+(st.myorep?"var(--blue)":"var(--border)"),background:st.myorep?"#e8f0fb":"transparent",color:st.myorep?"var(--blue)":"var(--text2)"}}>Myoreps</button>
+                            {sets.length>1 && <button onClick={function(){rmSet(exo.id,j);}} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>}
                           </div>
-                        ))}
-                        <button onClick={()=>addSet(exo.id)} style={{fontSize:12,color:"var(--text2)",background:"none",border:"1px solid var(--border)",borderRadius:6,padding:"3px 10px",cursor:"pointer",marginTop:2}}>+ Série</button>
+                        );})}
+                        <button onClick={function(){addSet(exo.id);}} style={{fontSize:12,color:"var(--text2)",background:"none",border:"1px solid var(--border)",borderRadius:6,padding:"3px 10px",cursor:"pointer",marginTop:2}}>+ Série</button>
                       </div>
                     );
                   })}
-                  {(()=>{const total=current.exos.reduce((t,exo)=>t+((perf[exo.id]||[]).reduce((tt,s)=>{const r=parseFloat(s.reps)||0,w=parseFloat(s.weight)||0;return tt+r*w;},0)),0);return total>0&&<div style={{background:"#e8f0fb",borderRadius:8,padding:"10px 14px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,fontWeight:500,color:"var(--blue)"}}>Tonnage total</span><span style={{fontSize:18,fontWeight:700,color:"var(--blue)"}}>{total.toLocaleString("fr-FR")} kg</span></div>;})()}
-                  <button onClick={logSession} className={`btn ${saved?"btn-green":"btn-blue"}`}>{saved?"✓ Enregistrée !":"Enregistrer la séance"}</button>
+                  {(function(){
+                    const total=current.exos.reduce(function(t,exo){return t+((perf[exo.id]||[]).reduce(function(tt,s){return tt+(parseFloat(s.reps)||0)*(parseFloat(s.weight)||0);},0));},0);
+                    return total>0 ? (
+                      <div style={{background:"#e8f0fb",borderRadius:8,padding:"10px 14px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <span style={{fontSize:13,fontWeight:500,color:"var(--blue)"}}>Tonnage total</span>
+                        <span style={{fontSize:18,fontWeight:700,color:"var(--blue)"}}>{total.toLocaleString("fr-FR")} kg</span>
+                      </div>
+                    ) : null;
+                  })()}
+                  <button onClick={logSession} className={"btn "+(saved?"btn-green":"btn-blue")}>{saved?"✓ Enregistrée !":"Enregistrer la séance"}</button>
                 </div>
               )}
-            </>
-          )}
-          {view==="history"&&(
-            <div>
-              {(!current.history||current.history.length===0)
-                ?<div className="card" style={{textAlign:"center",padding:"2rem"}}><p style={{color:"var(--text2)"}}>Aucune séance enregistrée.</p></div>
-                :[...current.history].reverse().map((h,hi)=>{
-                  const realIdx=current.history.length-1-hi;
-                  const prevH=hi<current.history.length-1?[...current.history].reverse()[hi+1]:null;
-                  return <SessionCard key={`${selectedId}-${realIdx}`} h={h} realIdx={realIdx} prevH={prevH} seances={seances} selectedId={selectedId} persist={persist} />;
-                })
-              }
             </div>
           )}
-        </>
+
+          {view==="history" && (
+            <div>
+              {(!current.history||current.history.length===0) ? (
+                <div className="card" style={{textAlign:"center",padding:"2rem"}}><p style={{color:"var(--text2)"}}>Aucune séance enregistrée.</p></div>
+              ) : (
+                [...current.history].reverse().map(function(h,hi){
+                  const realIdx = current.history.length-1-hi;
+                  const rev = [...current.history].reverse();
+                  const prevH = hi<rev.length-1 ? rev[hi+1] : null;
+                  return <SessionCard key={selectedId+"-"+realIdx} h={h} realIdx={realIdx} prevH={prevH} seances={seances} selectedId={selectedId} persist={persist} />;
+                })
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
 // ── RAPPORT ──
-function RapportTab({allData,weekOffset,setWeekOffset}){
-  const[note,setNote]=useState("");
-  const[generated,setGenerated]=useState(false);
-  const[reportData,setReportData]=useState(null);
-  const[syncing,setSyncing]=useState(false);
-  const[syncStatus,setSyncStatus]=useState(null);
-  const[pdfMode,setPdfMode]=useState(false);
-  const[dateFrom,setDateFrom]=useState(todayStr());
-  const[dateTo,setDateTo]=useState(todayStr());
+function RapportTab(props) {
+  const allData = props.allData;
+  const [note, setNote] = useState("");
+  const [generated, setGenerated] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null);
+  const [pdfMode, setPdfMode] = useState(false);
+  const [dateFrom, setDateFrom] = useState(todayStr());
+  const [dateTo, setDateTo] = useState(todayStr());
 
   function generate(){
-    if(!allData)return;
-    const from=new Date(dateFrom+"T00:00:00"),to=new Date(dateTo+"T23:59:59");
+    if(!allData) return;
+    const from=new Date(dateFrom+"T00:00:00"), to=new Date(dateTo+"T23:59:59");
     if(from>to){alert("La date de début doit être avant la date de fin.");return;}
-    const entries=Object.values(allData).filter(e=>{const d=new Date(e.date+"T12:00:00");return d>=from&&d<=to;}).sort((a,b)=>a.date>b.date?1:-1);
+    const entries=Object.values(allData).filter(function(e){const d=new Date(e.date+"T12:00:00");return d>=from&&d<=to;}).sort(function(a,b){return a.date>b.date?1:-1;});
     if(!entries.length){setGenerated(true);setReportData(null);return;}
     const diffMs=to-from;
-    const refFrom=new Date(from-diffMs-1),refTo=new Date(from-1);
-    const refEntries=Object.values(allData).filter(e=>{const d=new Date(e.date+"T12:00:00");return d>=refFrom&&d<=refTo;});
-    const label=`Du ${new Date(dateFrom+"T12:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})} au ${new Date(dateTo+"T12:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})}`;
+    const refFrom=new Date(from-diffMs-1), refTo=new Date(from-1);
+    const refEntries=Object.values(allData).filter(function(e){const d=new Date(e.date+"T12:00:00");return d>=refFrom&&d<=refTo;});
+    const label="Du "+new Date(dateFrom+"T12:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})+" au "+new Date(dateTo+"T12:00:00").toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"});
     const isFirst=refEntries.length===0;
-    const dv=key=>{const cur=avgArr(entries,key),prev=avgArr(refEntries,key);if(cur==null||prev==null)return null;return{cur,prev,d:cur-prev,pct:prev?(cur-prev)/prev*100:0};};
-    const dvRef=key=>{const cur=avgArr(entries,key),ref=avgArr(refEntries,key);if(cur==null||ref==null)return null;return{cur,ref,d:cur-ref,pct:ref?(cur-ref)/ref*100:0};};
-    setReportData({entries,label,isFirst,prevEntries:refEntries,refEntries,dv,dvRef});
+    function dv(key){const cur=avgArr(entries,key),prev=avgArr(refEntries,key);if(cur==null||prev==null)return null;return{cur:cur,d:cur-prev,pct:prev?(cur-prev)/prev*100:0};}
+    function dvRef(key){const cur=avgArr(entries,key),ref=avgArr(refEntries,key);if(cur==null||ref==null)return null;return{cur:cur,d:cur-ref,pct:ref?(cur-ref)/ref*100:0};}
+    setReportData({entries:entries,label:label,isFirst:isFirst,prevEntries:refEntries,refEntries:refEntries,dv:dv,dvRef:dvRef});
     setGenerated(true);
   }
 
   async function syncToSheets(){
     setSyncing(true);setSyncStatus(null);
-    try{const healthEntries=Object.values(allData||{});const seances=loadLocal(SEANCES_KEY)||[];await sendToSheet("sante",healthEntries);await sendToSheet("seances",seances);setSyncStatus("ok");}
-    catch(e){setSyncStatus("err");}
-    setSyncing(false);setTimeout(()=>setSyncStatus(null),4000);
+    try{
+      const healthEntries=Object.values(allData||{});
+      const seances=loadLocal(SEANCES_KEY)||[];
+      await sendToSheet("sante",healthEntries);
+      await sendToSheet("seances",seances);
+      setSyncStatus("ok");
+    }catch(e){setSyncStatus("err");}
+    setSyncing(false);setTimeout(function(){setSyncStatus(null);},4000);
   }
 
-  function printPDF(){setPdfMode(true);setTimeout(()=>{window.print();setTimeout(()=>setPdfMode(false),1000);},300);}
+  function printPDF(){
+    setPdfMode(true);
+    setTimeout(function(){window.print();setTimeout(function(){setPdfMode(false);},1000);},300);
+  }
 
-  const moodTxt=v=>["","Très bas","Bas","Neutre","Bien","Excellent"][v]||"—";
-  const digTxt=v=>["","Mauvaise","Difficile","Normale","Bonne","Excellente"][v]||"—";
+  function moodTxt(v){return ["","Très bas","Bas","Neutre","Bien","Excellent"][v]||"—";}
+  function digTxt(v){return ["","Mauvaise","Difficile","Normale","Bonne","Excellente"][v]||"—";}
 
-  const tableRows=[
-    {label:"⚖️ Poids (kg)",cell:e=>e.weight||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"weight");return v!=null?v.toFixed(1):"—";},dvKey:"weight",inv:false},
-    {label:"📏 Tour taille (cm)",cell:e=>e.waist||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"waist");return v!=null?v.toFixed(1):"—";},dvKey:"waist",inv:true},
-    {label:"❤️ BPM repos",cell:e=>e.bpmRest||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"bpmRest");return v!=null?Math.round(v):"—";},dvKey:"bpmRest",inv:true},
-    {label:"❤️ BPM min",cell:e=>e.bpmLow||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"bpmLow");return v!=null?Math.round(v):"—";},dvKey:null},
-    {label:"❤️ BPM max",cell:e=>e.bpmHigh||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"bpmHigh");return v!=null?Math.round(v):"—";},dvKey:null},
-    {label:"🩺 Tension (mmHg)",cell:e=>e.systolic?(e.systolic+"/"+(e.diastolic||"—")):"—",avg:()=>{const s=avgArr(reportData?.entries||[],"systolic"),d=avgArr(reportData?.entries||[],"diastolic");return s!=null?(Math.round(s)+"/"+(d!=null?Math.round(d):"—")):"—";},dvKey:"systolic",inv:true},
-    {label:"👣 Pas",cell:e=>e.steps?parseInt(e.steps).toLocaleString("fr-FR"):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"steps");return v!=null?Math.round(v).toLocaleString("fr-FR"):"—";},dvKey:"steps",inv:false},
-    {label:"😴 Sommeil (h)",cell:e=>e.sleepHours||"—",avg:()=>{const v=avgArr(reportData?.entries||[],"sleepHours");return v!=null?v.toFixed(1):"—";},dvKey:"sleepHours",inv:false},
-    {label:"🧠 Humeur /5",cell:e=>e.mood?(e.mood+"/5 — "+moodTxt(e.mood)):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"mood");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:"mood",inv:false},
-    {label:"🫃 Digestion /5",cell:e=>e.digestion?(e.digestion+"/5 — "+digTxt(e.digestion)):"—",avg:()=>{const v=avgArr(reportData?.entries||[],"digestion");return v!=null?v.toFixed(1)+"/5":"—";},dvKey:null},
-    {label:"💧 Hydratation 5L",cell:e=>e.water5L?"✅ Oui":"Non",avg:()=>{const e=reportData?.entries||[];return e.filter(x=>x.water5L).length+"/"+e.length+" jours";},dvKey:null},
+  const rd = reportData;
+  const tableRows = [
+    {label:"⚖️ Poids (kg)",      cell:function(e){return e.weight||"—";},    avg:function(){const v=avgArr(rd?rd.entries:[],"weight");  return v!=null?v.toFixed(1):"—";},   dvKey:"weight",   inv:false},
+    {label:"📏 Tour taille (cm)", cell:function(e){return e.waist||"—";},     avg:function(){const v=avgArr(rd?rd.entries:[],"waist");   return v!=null?v.toFixed(1):"—";},   dvKey:"waist",    inv:true},
+    {label:"❤️ BPM repos",        cell:function(e){return e.bpmRest||"—";},   avg:function(){const v=avgArr(rd?rd.entries:[],"bpmRest"); return v!=null?Math.round(v):"—";}, dvKey:"bpmRest",  inv:true},
+    {label:"❤️ BPM min",          cell:function(e){return e.bpmLow||"—";},    avg:function(){const v=avgArr(rd?rd.entries:[],"bpmLow");  return v!=null?Math.round(v):"—";}, dvKey:null},
+    {label:"❤️ BPM max",          cell:function(e){return e.bpmHigh||"—";},   avg:function(){const v=avgArr(rd?rd.entries:[],"bpmHigh"); return v!=null?Math.round(v):"—";}, dvKey:null},
+    {label:"🩺 Tension (mmHg)",   cell:function(e){return e.systolic?(e.systolic+"/"+(e.diastolic||"—")):"—";}, avg:function(){const s=avgArr(rd?rd.entries:[],"systolic"),d=avgArr(rd?rd.entries:[],"diastolic");return s!=null?(Math.round(s)+"/"+(d!=null?Math.round(d):"—")):"—";}, dvKey:"systolic", inv:true},
+    {label:"👣 Pas",              cell:function(e){return e.steps?parseInt(e.steps).toLocaleString("fr-FR"):"—";}, avg:function(){const v=avgArr(rd?rd.entries:[],"steps");return v!=null?Math.round(v).toLocaleString("fr-FR"):"—";}, dvKey:"steps", inv:false},
+    {label:"😴 Sommeil (h)",      cell:function(e){return e.sleepHours||"—";},avg:function(){const v=avgArr(rd?rd.entries:[],"sleepHours");return v!=null?v.toFixed(1):"—";}, dvKey:"sleepHours", inv:false},
+    {label:"🧠 Humeur /5",        cell:function(e){return e.mood?(e.mood+"/5 — "+moodTxt(e.mood)):"—";}, avg:function(){const v=avgArr(rd?rd.entries:[],"mood");return v!=null?v.toFixed(1)+"/5":"—";}, dvKey:"mood", inv:false},
+    {label:"🫃 Digestion /5",     cell:function(e){return e.digestion?(e.digestion+"/5 — "+digTxt(e.digestion)):"—";}, avg:function(){const v=avgArr(rd?rd.entries:[],"digestion");return v!=null?v.toFixed(1)+"/5":"—";}, dvKey:null},
+    {label:"💧 Hydratation 5L",   cell:function(e){return e.water5L?"✅ Oui":"Non";}, avg:function(){const e=rd?rd.entries:[];return e.filter(function(x){return x.water5L;}).length+"/"+e.length+" jours";}, dvKey:null},
   ];
 
   const thS={padding:"8px 10px",fontSize:11,fontWeight:600,color:"var(--text2)",borderBottom:"2px solid var(--border)",background:"var(--bg2)",textAlign:"center",whiteSpace:"nowrap"};
@@ -467,134 +639,163 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
   const tdL={padding:"8px 10px",fontSize:12,textAlign:"left",borderBottom:"1px solid var(--border)",fontWeight:500,color:"var(--text2)",background:"var(--bg2)",whiteSpace:"nowrap"};
   const tdAvg={padding:"8px 10px",fontSize:12,textAlign:"center",borderBottom:"1px solid var(--border)",fontWeight:600,color:"var(--blue)",background:"#ddeaff",whiteSpace:"nowrap"};
 
-  return(
+  const evolKeys = [["Poids","weight","kg",1,false],["Tour taille","waist","cm",1,true],["BPM repos","bpmRest","bpm",0,true],["Tension","systolic","mmHg",0,true],["Pas/jour","steps","",0,false],["Sommeil","sleepHours","h",1,false]];
+
+  return (
     <div>
       <div className="no-print">
         <div className="card">
           <p className="sec">Rapport de suivi</p>
           <div className="row" style={{marginBottom:12}}>
-            <div className="col"><span className="lbl">Date de début</span><input type="date" value={dateFrom} onChange={e=>{setDateFrom(e.target.value);setGenerated(false);setReportData(null);}} className="inp" /></div>
-            <div className="col"><span className="lbl">Date de fin</span><input type="date" value={dateTo} onChange={e=>{setDateTo(e.target.value);setGenerated(false);setReportData(null);}} className="inp" /></div>
+            <div className="col">
+              <span className="lbl">Date de début</span>
+              <input type="date" value={dateFrom} onChange={function(e){setDateFrom(e.target.value);setGenerated(false);setReportData(null);}} className="inp" />
+            </div>
+            <div className="col">
+              <span className="lbl">Date de fin</span>
+              <input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);setGenerated(false);setReportData(null);}} className="inp" />
+            </div>
           </div>
           <button onClick={generate} className="btn btn-blue" style={{marginBottom:8}}>Générer le rapport</button>
-          <button onClick={syncToSheets} disabled={syncing} className="btn" style={{background:syncStatus==="ok"?"var(--green)":syncStatus==="err"?"var(--red)":"#0f9d58"}}>
-            {syncing?"⏳ Envoi en cours...":syncStatus==="ok"?"✅ Google Sheet mis à jour !":syncStatus==="err"?"❌ Erreur — réessayez":"📊 Envoyer vers Google Sheet"}
+          <button onClick={syncToSheets} disabled={syncing} className="btn" style={{background:syncStatus==="ok"?"var(--green)":syncStatus==="err"?"var(--red)":"#0f9d58",marginBottom:0}}>
+            {syncing?"⏳ Envoi en cours...":syncStatus==="ok"?"✅ Google Sheet mis à jour !":syncStatus==="err"?"❌ Erreur":"📊 Envoyer vers Google Sheet"}
           </button>
         </div>
 
-        {generated&&!reportData&&<div className="card" style={{textAlign:"center",padding:"2rem"}}><p style={{color:"var(--text2)"}}>Aucune donnée pour cette période.</p></div>}
+        {generated && !reportData && <div className="card" style={{textAlign:"center",padding:"2rem"}}><p style={{color:"var(--text2)"}}>Aucune donnée pour cette période.</p></div>}
 
-        {generated&&reportData&&(()=>{
-          const{entries,label,isFirst,prevEntries,refEntries,dv,dvRef}=reportData;
-          const dayFmt=e=>new Date(e.date+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"});
-          return(
-            <>
+        {generated && reportData && (function(){
+          const entries=reportData.entries, label=reportData.label, isFirst=reportData.isFirst;
+          const prevEntries=reportData.prevEntries, refEntries=reportData.refEntries;
+          const dv=reportData.dv, dvRef=reportData.dvRef;
+          function dayFmt(e){return new Date(e.date+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"});}
+          return (
+            <div>
               <div style={{marginBottom:12,borderRadius:10,border:"1px solid var(--border)",overflow:"hidden"}}>
                 <div style={{padding:"10px 14px",background:"var(--bg2)",borderBottom:"1px solid var(--border)"}}><span style={{fontWeight:600,fontSize:14}}>{label}</span></div>
                 <div style={{overflowX:"auto"}}>
                   <table>
                     <thead><tr>
-                      <th style={{...thS,textAlign:"left",minWidth:180}}>Métrique</th>
-                      {entries.map((e,i)=><th key={i} style={thS}>{dayFmt(e)}</th>)}
-                      <th style={{...thS,background:"#ddeaff",color:"var(--blue)"}}>Moy.</th>
-                      {!isFirst&&prevEntries.length>0&&<th style={{...thS,background:"#f0f0f0"}}>vs préc.</th>}
+                      <th style={Object.assign({},thS,{textAlign:"left",minWidth:180})}>Métrique</th>
+                      {entries.map(function(e,i){return <th key={i} style={thS}>{dayFmt(e)}</th>;})}
+                      <th style={Object.assign({},thS,{background:"#ddeaff",color:"var(--blue)"})}>Moy.</th>
+                      {!isFirst&&prevEntries.length>0&&<th style={Object.assign({},thS,{background:"#f0f0f0"})}>vs préc.</th>}
                     </tr></thead>
                     <tbody>
-                      {tableRows.map((row,ri)=>(
+                      {tableRows.map(function(row,ri){return (
                         <tr key={ri} style={{background:ri%2===0?"transparent":"var(--bg2)"}}>
-                          <td style={{...tdL,background:ri%2===0?"var(--bg2)":"var(--bg)"}}>{row.label}</td>
-                          {entries.map((e,i)=><td key={i} style={tdS}>{row.cell(e)}</td>)}
+                          <td style={Object.assign({},tdL,{background:ri%2===0?"var(--bg2)":"var(--bg)"})}>{row.label}</td>
+                          {entries.map(function(e,i){return <td key={i} style={tdS}>{row.cell(e)}</td>;})}
                           <td style={tdAvg}>{row.avg()}</td>
                           {!isFirst&&prevEntries.length>0&&(
-                            <td style={{...tdS,background:"#f8f8f8"}}>
-                              {row.dvKey?(()=>{const d=dv(row.dvKey);if(!d)return<span style={{color:"var(--text2)"}}>—</span>;const up=d.d>=0,good=row.inv?!up:up,color=good?"var(--green)":"var(--red)";return<span style={{color,fontWeight:500}}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</span>;})():<span style={{color:"var(--text2)"}}>—</span>}
+                            <td style={Object.assign({},tdS,{background:"#f8f8f8"})}>
+                              {row.dvKey ? (function(){
+                                const d=dv(row.dvKey);
+                                if(!d) return <span style={{color:"var(--text2)"}}>—</span>;
+                                const up=d.d>=0, good=row.inv?!up:up, color=good?"var(--green)":"var(--red)";
+                                return <span style={{color:color,fontWeight:500}}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</span>;
+                              })() : <span style={{color:"var(--text2)"}}>—</span>}
                             </td>
                           )}
                         </tr>
-                      ))}
+                      );})}
                     </tbody>
                   </table>
                 </div>
               </div>
+
               {!isFirst&&refEntries.length>0&&(
                 <div className="card" style={{marginBottom:12}}>
-                  <p style={{fontWeight:600,fontSize:13,marginBottom:10}}>Évolution depuis la période précédente</p>
+                  <p style={{fontWeight:600,fontSize:13,marginBottom:10}}>Évolution vs période précédente</p>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
-                    {[["Poids","weight","kg",1,false],["Tour taille","waist","cm",1,true],["BPM repos","bpmRest","bpm",0,true],["Tension","systolic","mmHg",0,true],["Pas/jour","steps","",0,false],["Sommeil","sleepHours","h",1,false]].map(([n,k,u,dec,inv])=>{
-                      const d=dvRef(k);if(!d)return null;
-                      const up=d.d>=0,good=inv?!up:up;
-                      return(<div key={k} style={{background:good?"#f0faf5":"#fff5f5",borderRadius:8,padding:"8px 12px",border:`1px solid ${good?"var(--green)":"var(--red)"}33`}}>
-                        <span style={{fontSize:11,color:"var(--text2)",display:"block"}}>{n}</span>
-                        <span style={{fontSize:15,fontWeight:600,color:good?"var(--green)":"var(--red)"}}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</span>
-                        <span style={{fontSize:11,color:"var(--text2)",display:"block"}}>{up?"+":"-"}{k==="steps"?Math.round(Math.abs(d.d)).toLocaleString("fr-FR"):Math.abs(d.d).toFixed(dec)} {u}</span>
-                      </div>);
+                    {evolKeys.map(function(item){
+                      const n=item[0],k=item[1],u=item[2],dec=item[3],inv=item[4];
+                      const d=dvRef(k); if(!d) return null;
+                      const up=d.d>=0, good=inv?!up:up;
+                      return (
+                        <div key={k} style={{background:good?"#f0faf5":"#fff5f5",borderRadius:8,padding:"8px 12px",border:"1px solid "+(good?"var(--green)":"var(--red)")+"33"}}>
+                          <span style={{fontSize:11,color:"var(--text2)",display:"block"}}>{n}</span>
+                          <span style={{fontSize:15,fontWeight:600,color:good?"var(--green)":"var(--red)"}}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</span>
+                          <span style={{fontSize:11,color:"var(--text2)",display:"block"}}>{up?"+":"-"}{k==="steps"?Math.round(Math.abs(d.d)).toLocaleString("fr-FR"):Math.abs(d.d).toFixed(dec)} {u}</span>
+                        </div>
+                      );
                     })}
                   </div>
                 </div>
               )}
+
               <div className="card">
                 <p style={{fontWeight:500,fontSize:13,marginBottom:8}}>📝 Note</p>
-                <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Ressentis, observations, questions..." rows={5} className="inp" style={{fontSize:13,lineHeight:1.6}} />
+                <textarea value={note} onChange={function(e){setNote(e.target.value);}} placeholder="Ressentis, observations..." rows={5} className="inp" style={{fontSize:13,lineHeight:1.6}} />
               </div>
               <button onClick={printPDF} className="btn btn-blue">🖨️ Imprimer / Enregistrer en PDF</button>
-              <p style={{fontSize:11,color:"var(--text2)",textAlign:"center",marginTop:-4,marginBottom:12}}>Dans la fenêtre d'impression → "Enregistrer en PDF" + décochez "En-têtes et pieds de page"</p>
-            </>
+              <p style={{fontSize:11,color:"var(--text2)",textAlign:"center",marginTop:-4,marginBottom:12}}>Dans l'impression → décochez "En-têtes et pieds de page"</p>
+            </div>
           );
         })()}
       </div>
 
-      {generated&&reportData&&(()=>{
-        const{entries,label,isFirst,prevEntries,refEntries,dv,dvRef}=reportData;
-        return(
+      {generated && reportData && (function(){
+        const entries=reportData.entries, label=reportData.label, isFirst=reportData.isFirst;
+        const prevEntries=reportData.prevEntries, refEntries=reportData.refEntries;
+        const dv=reportData.dv, dvRef=reportData.dvRef;
+        return (
           <div id="pdf-content" style={{display:pdfMode?"block":"none"}}>
             <div className="pdf-header">
-              <div className="pdf-header-left">
+              <div>
                 <h1>RAPPORT DE SUIVI</h1>
                 <h2>Dylan Gonthier</h2>
               </div>
               <div className="pdf-header-right">
-                <strong>{label}</strong><br/>
+                <strong>{label}</strong>
                 Généré le {new Date().toLocaleDateString("fr-FR",{day:"2-digit",month:"long",year:"numeric"})}
               </div>
             </div>
-            <div className="pdf-section-title">Données</div>
+            <div className="pdf-sec">Données</div>
             <table className="pdf-table">
               <thead><tr>
-                <th className="left" style={{minWidth:160}}>Métrique</th>
-                {entries.map((e,i)=><th key={i}>{new Date(e.date+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"})}</th>)}
+                <th className="l" style={{minWidth:160}}>Métrique</th>
+                {entries.map(function(e,i){return <th key={i}>{new Date(e.date+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"2-digit"})}</th>;})}
                 <th style={{background:"#444"}}>Moyenne</th>
                 {!isFirst&&prevEntries.length>0&&<th style={{background:"#444"}}>vs préc.</th>}
               </tr></thead>
               <tbody>
-                {tableRows.map((row,ri)=>(
+                {tableRows.map(function(row,ri){return (
                   <tr key={ri}>
-                    <td className="left">{row.label}</td>
-                    {entries.map((e,i)=><td key={i}>{row.cell(e)}</td>)}
+                    <td className="l">{row.label}</td>
+                    {entries.map(function(e,i){return <td key={i}>{row.cell(e)}</td>;})}
                     <td style={{fontWeight:700,background:"#f0f0f0"}}>{row.avg()}</td>
                     {!isFirst&&prevEntries.length>0&&(
-                      <td>{row.dvKey?(()=>{const d=dv(row.dvKey);if(!d)return"—";const up=d.d>=0,good=row.inv?!up:up;return<span className={good?"good":"bad"}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</span>;})():"—"}</td>
+                      <td>{row.dvKey?(function(){
+                        const d=dv(row.dvKey);if(!d)return "—";
+                        const up=d.d>=0,good=row.inv?!up:up;
+                        return <span className={good?"good":"bad"}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</span>;
+                      })():"—"}</td>
                     )}
                   </tr>
-                ))}
+                );})}
               </tbody>
             </table>
             {!isFirst&&refEntries.length>0&&(
-              <>
-                <div className="pdf-section-title">Évolution vs période précédente</div>
+              <div>
+                <div className="pdf-sec">Évolution vs période précédente</div>
                 <div className="pdf-evol">
-                  {[["Poids","weight","kg",1,false],["Tour taille","waist","cm",1,true],["BPM repos","bpmRest","bpm",0,true],["Tension","systolic","mmHg",0,true],["Pas/jour","steps","",0,false],["Sommeil","sleepHours","h",1,false]].map(([n,k,u,dec,inv])=>{
+                  {evolKeys.map(function(item){
+                    const n=item[0],k=item[1],u=item[2],dec=item[3],inv=item[4];
                     const d=dvRef(k);if(!d)return null;
                     const up=d.d>=0,good=inv?!up:up;
-                    return(<div key={k} className="pdf-evol-card">
-                      <div className="evol-label">{n}</div>
-                      <div className={`evol-val ${good?"good":"bad"}`}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</div>
-                      <div className="evol-abs">{up?"+":"-"}{k==="steps"?Math.round(Math.abs(d.d)).toLocaleString("fr-FR"):Math.abs(d.d).toFixed(dec)} {u}</div>
-                    </div>);
+                    return (
+                      <div key={k} className="pdf-evol-card">
+                        <div className="evol-label">{n}</div>
+                        <div className={"evol-val "+(good?"good":"bad")}>{up?"↑":"↓"} {up?"+":"-"}{Math.abs(d.pct).toFixed(1)}%</div>
+                        <div className="evol-abs">{up?"+":"-"}{k==="steps"?Math.round(Math.abs(d.d)).toLocaleString("fr-FR"):Math.abs(d.d).toFixed(dec)} {u}</div>
+                      </div>
+                    );
                   })}
                 </div>
-              </>
+              </div>
             )}
-            {note.trim()&&(<><div className="pdf-section-title">Note</div><div className="pdf-note">{note}</div></>)}
+            {note.trim()&&<div><div className="pdf-sec">Note</div><div className="pdf-note">{note}</div></div>}
             <div className="pdf-footer"><span>Dylan Gonthier</span><span>{label}</span></div>
           </div>
         );
@@ -604,67 +805,106 @@ function RapportTab({allData,weekOffset,setWeekOffset}){
 }
 
 // ── MAIN ──
-function App(){
-  const[tab,setTab]=useState("saisie");
-  const[allData,setAllData]=useState({});
-  const[entry,setEntry]=useState(emptyEntry(todayStr()));
-  const[saved,setSaved]=useState(false);
-  const[weekOffset,setWeekOffset]=useState(0);
+function App() {
+  const [tab, setTab] = useState("saisie");
+  const [allData, setAllData] = useState({});
+  const [entry, setEntry] = useState(emptyEntry(todayStr()));
+  const [saved, setSaved] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
 
-  useEffect(()=>{const d=loadLocal(HEALTH_KEY)||{};setAllData(d);setEntry(d[todayStr()]||emptyEntry(todayStr()));},[]);
+  useEffect(function(){
+    const d = loadLocal(HEALTH_KEY)||{};
+    setAllData(d);
+    setEntry(d[todayStr()]||emptyEntry(todayStr()));
+  },[]);
+
   function changeDate(date){setEntry(allData[date]||emptyEntry(date));setSaved(false);}
-  function setF(k,v){setEntry(e=>({...e,[k]:v}));setSaved(false);}
-  function saveEntry(){const updated={...allData,[entry.date]:{...entry}};setAllData(updated);saveLocal(HEALTH_KEY,updated);setSaved(true);setTimeout(()=>setSaved(false),2500);}
-  const choiceBtn=(val,cur,label,setter)=>(<button key={val} onClick={()=>setter(val)} className={`choice-btn${cur===val?" active":""}`}>{label}</button>);
+  function setF(k,v){setEntry(function(e){return Object.assign({},e,{[k]:v});});setSaved(false);}
+  function saveEntry(){
+    const updated=Object.assign({},allData,{[entry.date]:Object.assign({},entry)});
+    setAllData(updated);saveLocal(HEALTH_KEY,updated);
+    setSaved(true);setTimeout(function(){setSaved(false);},2500);
+  }
 
-  return(
+  function choiceBtn(val,cur,label,setter){
+    return <button key={val} onClick={function(){setter(val);}} className={"choice-btn"+(cur===val?" active":"")}>{label}</button>;
+  }
+
+  return (
     <div className="app">
       <h2 style={{fontSize:20,fontWeight:500,marginBottom:4}}>Coach Health Tracker</h2>
       <p style={{fontSize:13,color:"var(--text2)",marginBottom:20}}>Suivi quotidien santé & performances</p>
       <div className="tab-bar">
-        {[["saisie","Saisie du jour"],["seances","Séances"],["stats","Statistiques"],["rapport","Rapport"]].map(([k,v])=>(
-          <button key={k} onClick={()=>setTab(k)} className={`tab${tab===k?" active":""}`}>{v}</button>
-        ))}
+        {[["saisie","Saisie du jour"],["seances","Séances"],["stats","Statistiques"],["rapport","Rapport"]].map(function(item){
+          return <button key={item[0]} onClick={function(){setTab(item[0]);}} className={"tab"+(tab===item[0]?" active":"")}>{item[1]}</button>;
+        })}
       </div>
-      {tab==="saisie"&&(
+
+      {tab==="saisie" && (
         <div>
-          <div className="card"><span className="lbl">Date</span><input type="date" value={entry.date} onChange={e=>changeDate(e.target.value)} className="inp" /></div>
+          <div className="card"><span className="lbl">Date</span><input type="date" value={entry.date} onChange={function(e){changeDate(e.target.value);}} className="inp" /></div>
           <div className="card">
             <p className="sec">❤️ Cardiaque</p>
-            <div className="row">{[["bpmRest","BPM repos"],["bpmLow","BPM min"],["bpmHigh","BPM max"]].map(([k,v])=><div key={k} className="col"><span className="lbl">{v}</span><input type="number" value={entry[k]||""} onChange={e=>setF(k,e.target.value)} placeholder="bpm" className="inp" /></div>)}</div>
+            <div className="row">
+              {[["bpmRest","BPM repos"],["bpmLow","BPM min"],["bpmHigh","BPM max"]].map(function(item){
+                return <div key={item[0]} className="col"><span className="lbl">{item[1]}</span><input type="number" value={entry[item[0]]||""} onChange={function(e){setF(item[0],e.target.value);}} placeholder="bpm" className="inp" /></div>;
+              })}
+            </div>
           </div>
           <div className="card">
             <p className="sec">😴 Sommeil</p>
             <span className="lbl">Durée de sommeil (h)</span>
-            <input type="number" step="0.5" value={entry.sleepHours||""} onChange={e=>setF("sleepHours",e.target.value)} placeholder="ex: 7.5" className="inp" />
+            <input type="number" value={entry.sleepHours||""} onChange={function(e){setF("sleepHours",e.target.value);}} placeholder="ex: 7.5" className="inp" />
           </div>
-          <div className="card"><p className="sec">👣 Pas</p><input type="number" value={entry.steps||""} onChange={e=>setF("steps",e.target.value)} placeholder="ex: 8500" className="inp" /></div>
-          <div className="card"><p className="sec">⚖️ Corps</p><div className="row"><div className="col"><span className="lbl">Poids (kg)</span><input type="number" value={entry.weight||""} onChange={e=>setF("weight",e.target.value)} placeholder="78.5" className="inp" /></div><div className="col"><span className="lbl">Tour taille (cm)</span><input type="number" value={entry.waist||""} onChange={e=>setF("waist",e.target.value)} placeholder="85" className="inp" /></div></div></div>
-          <div className="card"><p className="sec">🩺 Tension</p><div className="row"><div className="col"><span className="lbl">Systolique</span><input type="number" value={entry.systolic||""} onChange={e=>setF("systolic",e.target.value)} placeholder="120" className="inp" /></div><div className="col"><span className="lbl">Diastolique</span><input type="number" value={entry.diastolic||""} onChange={e=>setF("diastolic",e.target.value)} placeholder="80" className="inp" /></div></div></div>
+          <div className="card"><p className="sec">👣 Pas</p><input type="number" value={entry.steps||""} onChange={function(e){setF("steps",e.target.value);}} placeholder="ex: 8500" className="inp" /></div>
+          <div className="card">
+            <p className="sec">⚖️ Corps</p>
+            <div className="row">
+              <div className="col"><span className="lbl">Poids (kg)</span><input type="number" value={entry.weight||""} onChange={function(e){setF("weight",e.target.value);}} placeholder="78.5" className="inp" /></div>
+              <div className="col"><span className="lbl">Tour taille (cm)</span><input type="number" value={entry.waist||""} onChange={function(e){setF("waist",e.target.value);}} placeholder="85" className="inp" /></div>
+            </div>
+          </div>
+          <div className="card">
+            <p className="sec">🩺 Tension</p>
+            <div className="row">
+              <div className="col"><span className="lbl">Systolique</span><input type="number" value={entry.systolic||""} onChange={function(e){setF("systolic",e.target.value);}} placeholder="120" className="inp" /></div>
+              <div className="col"><span className="lbl">Diastolique</span><input type="number" value={entry.diastolic||""} onChange={function(e){setF("diastolic",e.target.value);}} placeholder="80" className="inp" /></div>
+            </div>
+          </div>
           <div className="card">
             <p className="sec">🧠 Humeur</p>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>{[1,2,3,4,5].map(i=>choiceBtn(i,entry.mood,moodLabels[i],v=>setF("mood",v)))}</div>
-            <textarea value={entry.moodNote||""} onChange={e=>setF("moodNote",e.target.value)} placeholder="Note libre..." rows={2} className="inp" />
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+              {[1,2,3,4,5].map(function(i){return choiceBtn(i,entry.mood,moodLabels[i],function(v){setF("mood",v);});})}
+            </div>
+            <textarea value={entry.moodNote||""} onChange={function(e){setF("moodNote",e.target.value);}} placeholder="Note libre..." rows={2} className="inp" />
           </div>
-          <div className="card"><p className="sec">🫃 Digestion</p><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[1,2,3,4,5].map(i=>choiceBtn(i,entry.digestion,digLabels[i],v=>setF("digestion",v)))}</div></div>
+          <div className="card">
+            <p className="sec">🫃 Digestion</p>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {[1,2,3,4,5].map(function(i){return choiceBtn(i,entry.digestion,digLabels[i],function(v){setF("digestion",v);});})}
+            </div>
+          </div>
           <div className="card">
             <p className="sec">💧 Hydratation</p>
-            <button onClick={()=>setF("water5L",!entry.water5L)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:8,border:entry.water5L?"2px solid var(--blue)":"1px solid var(--border)",background:entry.water5L?"#e8f0fb":"var(--bg)",cursor:"pointer",width:"100%"}}>
-              <span style={{width:22,height:22,borderRadius:6,border:entry.water5L?"2px solid var(--blue)":"1.5px solid var(--border)",background:entry.water5L?"var(--blue)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{entry.water5L&&<span style={{color:"#fff",fontSize:14,fontWeight:700}}>✓</span>}</span>
+            <button onClick={function(){setF("water5L",!entry.water5L);}} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:8,border:entry.water5L?"2px solid var(--blue)":"1px solid var(--border)",background:entry.water5L?"#e8f0fb":"var(--bg)",cursor:"pointer",width:"100%"}}>
+              <span style={{width:22,height:22,borderRadius:6,border:entry.water5L?"2px solid var(--blue)":"1.5px solid var(--border)",background:entry.water5L?"var(--blue)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {entry.water5L && <span style={{color:"#fff",fontSize:14,fontWeight:700}}>✓</span>}
+              </span>
               <span style={{fontSize:14,fontWeight:entry.water5L?500:400}}>J'ai bu 5L d'eau aujourd'hui</span>
             </button>
           </div>
-          <button onClick={saveEntry} className={`btn ${saved?"btn-green":"btn-blue"}`}>{saved?"✓ Sauvegardé !":"Sauvegarder la journée"}</button>
+          <button onClick={saveEntry} className={"btn "+(saved?"btn-green":"btn-blue")}>{saved?"✓ Sauvegardé !":"Sauvegarder la journée"}</button>
         </div>
       )}
-      {tab==="seances"&&<SeancesTab />}
-      {tab==="stats"&&<StatsTab allData={allData} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />}
-      {tab==="rapport"&&<RapportTab allData={allData} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />}
+
+      {tab==="seances" && <SeancesTab />}
+      {tab==="stats" && <StatsTab allData={allData} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />}
+      {tab==="rapport" && <RapportTab allData={allData} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />}
     </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 </script>
 </body>
 </html>
