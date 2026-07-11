@@ -313,37 +313,128 @@ function SeancesTab(){
           {view==="history"&&(
             <div>
               {(!current.history||current.history.length===0)?<div className="card" style={{textAlign:"center",padding:"2rem"}}><p style={{color:"var(--text2)"}}>Aucune séance enregistrée.</p></div>
-              :[...current.history].reverse().map((h,hi)=>{
+              :[...current.history].map((h,hi)=>{
+                const realIdx=current.history.length-1-hi;
+                const hRev=[...current.history].reverse();
                 const totalT=h.perf.reduce((t,e)=>t+calcTonnage(e),0);
-                const idx=current.history.length-1-hi;
-                const prevH=idx>0?current.history[idx-1]:null;
+                const prevH=hRev[hi+1]||null;
                 const prevT=prevH?prevH.perf.reduce((t,e)=>t+calcTonnage(e),0):null;
                 const diffT=prevT!=null?totalT-prevT:null;
                 const diffPct=prevT?(diffT/prevT*100):null;
+                const[editing,setEditing]=useState(false);
+                const[editPerf,setEditPerf]=useState(null);
+                const[newExoName,setNewExoName]=useState("");
+
+                function startEdit(){
+                  const p={};
+                  h.perf.forEach(e=>{p[e.exoId||e.name]=[...e.sets.map(s=>({...s}))];});
+                  setEditPerf(p);setEditing(true);
+                }
+
+                function saveEdit(){
+                  const newPerf=h.perf.map(e=>({...e,sets:(editPerf[e.exoId||e.name]||e.sets)})).filter(e=>e.sets.length>0);
+                  const updated=seances.map(s=>s.id===selectedId?{...s,history:s.history.map((sess,si)=>si===realIdx?{...sess,perf:newPerf}:sess)}:s);
+                  persist(updated);setEditing(false);
+                }
+
+                function addExoToSession(){
+                  if(!newExoName.trim())return;
+                  const exoId=Date.now();
+                  const newE={exoId,name:newExoName.trim(),sets:[{reps:"",weight:""}]};
+                  const updated=seances.map(s=>s.id===selectedId?{...s,history:s.history.map((sess,si)=>si===realIdx?{...sess,perf:[...sess.perf,newE]}:sess)}:s);
+                  persist(updated);
+                  setEditPerf(p=>({...p,[exoId]:[{reps:"",weight:""}]}));
+                  setNewExoName("");
+                }
+
+                function rmExoFromSession(exoId){
+                  const updated=seances.map(s=>s.id===selectedId?{...s,history:s.history.map((sess,si)=>si===realIdx?{...sess,perf:sess.perf.filter(e=>(e.exoId||e.name)!==exoId)}:sess)}:s);
+                  persist(updated);
+                  if(editPerf){const p={...editPerf};delete p[exoId];setEditPerf(p);}
+                }
+
+                function deleteSession(){
+                  if(!window.confirm("Supprimer cette session ?"))return;
+                  const updated=seances.map(s=>s.id===selectedId?{...s,history:s.history.filter((_,si)=>si!==realIdx)}:s);
+                  persist(updated);
+                }
+
+                function updEditSet(exoId,i,k,v){setEditPerf(p=>{const sets=[...(p[exoId]||[])];sets[i]={...sets[i],[k]:v};return{...p,[exoId]:sets};});}
+                function addEditSet(exoId){setEditPerf(p=>({...p,[exoId]:[...(p[exoId]||[]),{reps:"",weight:""}]}));}
+                function rmEditSet(exoId,i){setEditPerf(p=>({...p,[exoId]:(p[exoId]||[]).filter((_,j)=>j!==i)}));}
+
                 return(
                   <div key={hi} className="card">
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
                       <div>
-                        <span style={{fontWeight:500,fontSize:14}}>{fmtDate(h.date)}</span>
+                        <span style={{fontWeight:600,fontSize:15}}>{fmtDate(h.date)}</span>
                         {diffT!=null&&<span style={{fontSize:12,color:diffT>=0?"var(--green)":"var(--red)",marginLeft:10}}>{diffT>=0?"+":""}{diffT.toLocaleString("fr-FR")} kg ({diffPct>=0?"+":""}{diffPct.toFixed(1)}%)</span>}
                       </div>
-                      <div style={{textAlign:"right"}}><div style={{fontSize:12,color:"var(--text2)"}}>Tonnage</div><div style={{fontSize:18,fontWeight:700,color:"var(--blue)"}}>{totalT.toLocaleString("fr-FR")} kg</div></div>
-                    </div>
-                    {h.perf.map((e,ei)=>{
-                      const t=calcTonnage(e),prevPerf=prevH?.perf.find(p=>p.exoId===e.exoId),prevExoT=prevPerf?calcTonnage(prevPerf):null,dExo=prevExoT!=null?t-prevExoT:null,dExoPct=prevExoT?dExo/prevExoT*100:null;
-                      return(
-                        <div key={ei} style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid var(--border)"}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                            <span style={{fontSize:13,fontWeight:500}}>{e.name}</span>
-                            <div><span style={{fontSize:13,fontWeight:500,color:"var(--blue)"}}>{t.toLocaleString("fr-FR")} kg</span>{dExo!=null&&<span style={{fontSize:11,color:dExo>=0?"var(--green)":"var(--red)",marginLeft:8}}>{dExo>=0?"+":""}{dExo.toLocaleString("fr-FR")} kg ({dExoPct>=0?"+":""}{dExoPct.toFixed(1)}%)</span>}</div>
-                          </div>
-                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{e.sets.map((st,si)=><span key={si} style={{fontSize:12,padding:"3px 8px",borderRadius:6,border:"1px solid var(--border)",color:"var(--text2)"}}>S{si+1}: {st.reps}×{st.weight}kg</span>)}</div>
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <div style={{textAlign:"right"}}>
+                          <div style={{fontSize:11,color:"var(--text2)"}}>Tonnage</div>
+                          <div style={{fontSize:16,fontWeight:700,color:"var(--blue)"}}>{totalT.toLocaleString("fr-FR")} kg</div>
                         </div>
-                      );
-                    })}
+                        <button onClick={startEdit} style={{fontSize:12,padding:"4px 10px",borderRadius:6,border:"1px solid var(--border)",background:"transparent",cursor:"pointer",color:"var(--blue)"}}>✏️ Modifier</button>
+                        <button onClick={deleteSession} style={{fontSize:12,padding:"4px 10px",borderRadius:6,border:"1px solid var(--red)",background:"transparent",cursor:"pointer",color:"var(--red)"}}>🗑️</button>
+                      </div>
+                    </div>
+
+                    {editing?(
+                      <div>
+                        {h.perf.map((exo)=>{
+                          const key=exo.exoId||exo.name;
+                          const sets=editPerf[key]||exo.sets;
+                          return(
+                            <div key={key} style={{marginBottom:14,paddingBottom:14,borderBottom:"1px solid var(--border)"}}>
+                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                                <span style={{fontWeight:500,fontSize:13}}>{exo.name}</span>
+                                <button onClick={()=>rmExoFromSession(key)} style={{fontSize:11,padding:"2px 8px",borderRadius:6,border:"1px solid var(--red)",background:"transparent",cursor:"pointer",color:"var(--red)"}}>Supprimer</button>
+                              </div>
+                              {sets.map((st,j)=>(
+                                <div key={j} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center"}}>
+                                  <span style={{fontSize:12,color:"var(--text2)",width:52,flexShrink:0}}>Série {j+1}</span>
+                                  <input type="number" value={st.reps||""} onChange={e=>updEditSet(key,j,"reps",e.target.value)} placeholder="reps" className="inp" style={{width:70,flex:"none"}} />
+                                  <span style={{fontSize:12,color:"var(--text2)"}}>×</span>
+                                  <input type="number" value={st.weight||""} onChange={e=>updEditSet(key,j,"weight",e.target.value)} placeholder="kg" className="inp" style={{width:70,flex:"none"}} />
+                                  <span style={{fontSize:12,color:"var(--text2)"}}>kg</span>
+                                  {sets.length>1&&<button onClick={()=>rmEditSet(key,j)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>}
+                                </div>
+                              ))}
+                              <button onClick={()=>addEditSet(key)} style={{fontSize:11,color:"var(--text2)",background:"none",border:"1px solid var(--border)",borderRadius:6,padding:"2px 8px",cursor:"pointer"}}>+ Série</button>
+                            </div>
+                          );
+                        })}
+                        <div style={{display:"flex",gap:8,marginBottom:10}}>
+                          <input value={newExoName} onChange={e=>setNewExoName(e.target.value)} placeholder="Ajouter un exercice oublié..." className="inp" style={{flex:1}} onKeyDown={e=>e.key==="Enter"&&addExoToSession()} />
+                          <button onClick={addExoToSession} className="btn btn-blue" style={{width:"auto",padding:"6px 12px",marginBottom:0,fontSize:13}}>+ Exo</button>
+                        </div>
+                        <div style={{display:"flex",gap:8}}>
+                          <button onClick={saveEdit} className="btn btn-green" style={{marginBottom:0}}>✓ Sauvegarder</button>
+                          <button onClick={()=>setEditing(false)} className="btn" style={{marginBottom:0,background:"var(--border)",color:"var(--text)"}}>Annuler</button>
+                        </div>
+                      </div>
+                    ):(
+                      h.perf.map((e,ei)=>{
+                        const t=calcTonnage(e);
+                        const prevPerf=prevH?.perf.find(p=>(p.exoId||p.name)===(e.exoId||e.name));
+                        const prevExoT=prevPerf?calcTonnage(prevPerf):null;
+                        const dExo=prevExoT!=null?t-prevExoT:null;
+                        const dExoPct=prevExoT?dExo/prevExoT*100:null;
+                        return(
+                          <div key={ei} style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid var(--border)"}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                              <span style={{fontSize:13,fontWeight:500}}>{e.name}</span>
+                              <div><span style={{fontSize:13,fontWeight:500,color:"var(--blue)"}}>{t.toLocaleString("fr-FR")} kg</span>{dExo!=null&&<span style={{fontSize:11,color:dExo>=0?"var(--green)":"var(--red)",marginLeft:8}}>{dExo>=0?"+":""}{dExo.toLocaleString("fr-FR")} kg ({dExoPct>=0?"+":""}{dExoPct.toFixed(1)}%)</span>}</div>
+                            </div>
+                            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{e.sets.map((st,si)=><span key={si} style={{fontSize:12,padding:"3px 8px",borderRadius:6,border:"1px solid var(--border)",color:"var(--text2)"}}>S{si+1}: {st.reps}×{st.weight}kg</span>)}</div>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 );
-              })}
+              }).reverse()}
             </div>
           )}
         </>
