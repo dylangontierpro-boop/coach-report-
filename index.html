@@ -124,6 +124,7 @@ function SessionCard({h,realIdx,prevH,seances,selectedId,persist}){
     persist(updated);
   }
   function updEditSet(key,i,k,v){setEditPerf(p=>{const sets=[...(p[key]||[])];sets[i]={...sets[i],[k]:v};return{...p,[key]:sets};});}
+  function toggleEditMyorep(key,i){setEditPerf(p=>{const sets=[...(p[key]||[])];sets[i]={...sets[i],myorep:!sets[i].myorep};return{...p,[key]:sets};});}
   function addEditSet(key){setEditPerf(p=>({...p,[key]:[...(p[key]||[]),{reps:"",weight:""}]}));}
   function rmEditSet(key,i){setEditPerf(p=>({...p,[key]:(p[key]||[]).filter((_,j)=>j!==i)}));}
 
@@ -156,12 +157,17 @@ function SessionCard({h,realIdx,prevH,seances,selectedId,persist}){
                   <button onClick={()=>rmExoFromSession(key)} style={{fontSize:11,padding:"2px 8px",borderRadius:6,border:"1px solid var(--red)",background:"transparent",cursor:"pointer",color:"var(--red)"}}>Supprimer</button>
                 </div>
                 {sets.map((st,j)=>(
-                  <div key={j} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center"}}>
+                  <div key={j} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center",flexWrap:"wrap"}}>
                     <span style={{fontSize:12,color:"var(--text2)",width:52,flexShrink:0}}>Série {j+1}</span>
-                    <input type="number" value={st.reps||""} onChange={e=>updEditSet(key,j,"reps",e.target.value)} placeholder="reps" className="inp" style={{width:70,flex:"none"}} />
+                    {st.myorep?(
+                      <input value={st.reps||""} onChange={e=>updEditSet(key,j,"reps",e.target.value)} placeholder="ex: 11+3+3+3" className="inp" style={{flex:1,minWidth:120}} />
+                    ):(
+                      <input type="number" value={st.reps||""} onChange={e=>updEditSet(key,j,"reps",e.target.value)} placeholder="reps" className="inp" style={{width:70,flex:"none"}} />
+                    )}
                     <span style={{fontSize:12,color:"var(--text2)"}}>×</span>
                     <input type="number" value={st.weight||""} onChange={e=>updEditSet(key,j,"weight",e.target.value)} placeholder="kg" className="inp" style={{width:70,flex:"none"}} />
                     <span style={{fontSize:12,color:"var(--text2)"}}>kg</span>
+                    <button onClick={()=>toggleEditMyorep(key,j)} style={{fontSize:11,padding:"3px 8px",borderRadius:6,border:`1px solid ${st.myorep?"var(--blue)":"var(--border)"}`,background:st.myorep?"#e8f0fb":"transparent",color:st.myorep?"var(--blue)":"var(--text2)",cursor:"pointer",whiteSpace:"nowrap"}}>Myoreps</button>
                     {sets.length>1&&<button onClick={()=>rmEditSet(key,j)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>}
                   </div>
                 ))}
@@ -278,7 +284,17 @@ function SeancesTab(){
   function rmSeance(id){const u=seances.filter(s=>s.id!==id);persist(u);if(u.length){setSelectedId(u[0].id);initPerf(u[0]);}else setSelectedId(null);}
   function addExo(){if(!newExo.trim())return;const id=Date.now();const u=seances.map(s=>s.id===selectedId?{...s,exos:[...s.exos,{id,name:newExo.trim()}]}:s);persist(u);setPerf(p=>({...p,[id]:[{reps:"",weight:""}]}));setNewExo("");}
   function rmExo(exoId){const u=seances.map(s=>s.id===selectedId?{...s,exos:s.exos.filter(e=>e.id!==exoId)}:s);persist(u);}
-  function updSet(exoId,i,k,v){setPerf(p=>{const sets=[...(p[exoId]||[])];sets[i]={...sets[i],[k]:v};return{...p,[exoId]:sets};});}
+  function moveExo(id,dir){
+    const u=seances.map(s=>{
+      if(s.id!==selectedId)return s;
+      const exos=[...s.exos],idx=exos.findIndex(e=>e.id===id);
+      if(idx<0)return s;
+      const to=idx+dir;if(to<0||to>=exos.length)return s;
+      [exos[idx],exos[to]]=[exos[to],exos[idx]];
+      return{...s,exos};
+    });
+    persist(u);
+  }
   function toggleMyorep(exoId,i){setPerf(p=>{const sets=[...(p[exoId]||[])];sets[i]={...sets[i],myorep:!sets[i].myorep};return{...p,[exoId]:sets};});}
   function addSet(exoId){setPerf(p=>({...p,[exoId]:[...(p[exoId]||[]),{reps:"",weight:""}]}));}
   function rmSet(exoId,i){setPerf(p=>({...p,[exoId]:(p[exoId]||[]).filter((_,j)=>j!==i)}));}
@@ -332,7 +348,13 @@ function SeancesTab(){
                     return(
                       <div key={exo.id} style={{marginBottom:16,paddingBottom:16,borderBottom:"1px solid var(--border)"}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                          <span style={{fontWeight:500}}>{i+1}. {exo.name}</span>
+                          <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                            <div style={{display:"flex",flexDirection:"column",gap:1}}>
+                              <button onClick={()=>moveExo(exo.id,-1)} style={{background:"none",border:"1px solid var(--border)",borderRadius:4,cursor:"pointer",fontSize:10,padding:"1px 5px",color:"var(--text2)",lineHeight:1}}>▲</button>
+                              <button onClick={()=>moveExo(exo.id,1)} style={{background:"none",border:"1px solid var(--border)",borderRadius:4,cursor:"pointer",fontSize:10,padding:"1px 5px",color:"var(--text2)",lineHeight:1}}>▼</button>
+                            </div>
+                            <span style={{fontWeight:500}}>{i+1}. {exo.name}</span>
+                          </div>
                           <div style={{display:"flex",gap:8,alignItems:"center"}}>
                             {t>0&&<span style={{fontSize:12,color:"var(--blue)",fontWeight:500}}>{t} kg</span>}
                             <button onClick={()=>rmExo(exo.id)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>
