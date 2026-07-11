@@ -348,13 +348,18 @@ function SeancesTab(){
                     return(
                       <div key={exo.id} style={{marginBottom:16,paddingBottom:16,borderBottom:"1px solid var(--border)"}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                          <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                            <div style={{display:"flex",flexDirection:"column",gap:1}}>
-                              <button onClick={()=>moveExo(exo.id,-1)} style={{background:"none",border:"1px solid var(--border)",borderRadius:4,cursor:"pointer",fontSize:10,padding:"1px 5px",color:"var(--text2)",lineHeight:1}}>▲</button>
-                              <button onClick={()=>moveExo(exo.id,1)} style={{background:"none",border:"1px solid var(--border)",borderRadius:4,cursor:"pointer",fontSize:10,padding:"1px 5px",color:"var(--text2)",lineHeight:1}}>▼</button>
+                          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                            <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                              <button onClick={()=>moveExo(exo.id,-1)} style={{background:"none",border:"1px solid var(--border)",borderRadius:4,cursor:"pointer",fontSize:10,padding:"2px 6px",color:"var(--text2)"}}>▲</button>
+                              <button onClick={()=>moveExo(exo.id,1)} style={{background:"none",border:"1px solid var(--border)",borderRadius:4,cursor:"pointer",fontSize:10,padding:"2px 6px",color:"var(--text2)"}}>▼</button>
                             </div>
                             <span style={{fontWeight:500}}>{i+1}. {exo.name}</span>
                           </div>
+                          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                            {t>0&&<span style={{fontSize:12,color:"var(--blue)",fontWeight:500}}>{t} kg</span>}
+                            <button onClick={()=>rmExo(exo.id)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>
+                          </div>
+                        </div>
                           <div style={{display:"flex",gap:8,alignItems:"center"}}>
                             {t>0&&<span style={{fontSize:12,color:"var(--blue)",fontWeight:500}}>{t} kg</span>}
                             <button onClick={()=>rmExo(exo.id)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text2)",fontSize:16}}>×</button>
